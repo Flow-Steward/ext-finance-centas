@@ -10,7 +10,7 @@ from . import batches, documents, queue, reads
 from .context import Context
 
 TEST_CONNECTION = "test_connection"
-_VALIDATION_TOKEN = "validation-only"
+_CHECK_ONLY_KEY_STAND_IN = "validation-only"
 
 Runner = Callable[[Context], dict[str, Any]]
 
@@ -41,13 +41,17 @@ VALIDATORS: dict[str, Callable[[Mapping[str, Any]], Any]] = {
     "send_order": documents.order_form,
     "send_purchase_invoice": documents.purchase_invoice_form,
     "send_payments": batches.payments_xml,
-    "send_products": lambda i: batches.products_xml(i, _VALIDATION_TOKEN),
+    "send_products": lambda i: batches.products_xml(i, _CHECK_ONLY_KEY_STAND_IN),
     "send_contrahents": batches.contrahents_xml,
-    "update_sales_documents": lambda i: batches.update_xml(i, _VALIDATION_TOKEN),
-    "delete_sales_documents": lambda i: batches.delete_xml(i, _VALIDATION_TOKEN),
-    "record_document_payments": lambda i: batches.document_payments_xml(i, _VALIDATION_TOKEN),
+    "update_sales_documents": lambda i: batches.update_xml(i, _CHECK_ONLY_KEY_STAND_IN),
+    "delete_sales_documents": lambda i: batches.delete_xml(i, _CHECK_ONLY_KEY_STAND_IN),
+    "record_document_payments": lambda i: batches.document_payments_xml(
+        i, _CHECK_ONLY_KEY_STAND_IN
+    ),
     "send_consignment": batches.consignment_xml,
-    "send_invoice_to_company": lambda i: batches.company_invoice_xml(i, _VALIDATION_TOKEN, None),
+    "send_invoice_to_company": lambda i: batches.company_invoice_xml(
+        i, _CHECK_ONLY_KEY_STAND_IN, None
+    ),
     **{operation_id: partial(queue.path_of, operation_id) for operation_id in queue.TAKES},
 }
 

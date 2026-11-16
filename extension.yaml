@@ -8,20 +8,19 @@ version: 0.1.0
 release_stage: active
 billing_mode: free
 display_name: Centas
-description: 'Connect workflows to Centas, the Lithuanian accounting and business program, through
-  its web exchange Centas WS (ws.centas.lt), covering its whole documented API. Steps send sales
-  invoices, customer orders, purchase invoices and invoices to other companies with their lines,
-  and payments, products, clients and suppliers and consignment notes in batches; they also
-  update, record payments against or delete sales documents. Totals are checked against the
-  lines before anything is sent.
-
-
-  Read steps return products, prices and stock, product cards and gallery links, clients and
-  suppliers, sales documents by number, date or unpaid status, purchases of a date range, an
-  order’s invoice PDF and counts of new records. When a workflow plays the Centas program’s
-  part, take steps collect new sales documents, orders, purchases and payments from the Centas
-  WS queue and save them as workflow files. Each connection is one Centas WS project, reached
-  with its WS key.'
+description: "Connect workflows to Centas, the Lithuanian accounting and business\
+  \ program, through its web exchange Centas WS (ws.centas.lt), covering its whole\
+  \ documented API. Steps send sales invoices, customer orders, purchase invoices\
+  \ and invoices to other companies with their lines, and payments, products, clients\
+  \ and suppliers and consignment notes in batches; they also update, record payments\
+  \ against or delete sales documents. Totals are checked against the lines before\
+  \ anything is sent.\n\nRead steps return products, prices and stock, product cards\
+  \ and gallery links, clients and suppliers, sales documents by number, date or unpaid\
+  \ status, purchases of a date range, an order\u2019s invoice PDF and counts of new\
+  \ records. When a workflow plays the Centas program\u2019s part, take steps collect\
+  \ new sales documents, orders, purchases and payments from the Centas WS queue and\
+  \ save them as workflow files. Each connection is one Centas WS project, reached\
+  \ with its WS key."
 vendor:
   name: Flow Steward
   support_url: https://github.com/Flow-Steward/ext-finance-centas/issues
@@ -36,14 +35,15 @@ listing:
   - orders
   - payments
   - inventory
-  summary: Send invoices, orders, payments, products and clients to Centas WS and read products,
-    stock, documents and purchases.
+  summary: Send invoices, orders, payments, products and clients to Centas WS and
+    read products, stock, documents and purchases.
   categories:
   - finance
   - inventory
   - sales
-  setup_summary: Turn on the Centas WS service for your Centas program, copy its WS key (Nustatymai
-    → Bendrieji → III → WS raktas) into a project connection and run the connection test.
+  setup_summary: "Turn on the Centas WS service for your Centas program, copy its\
+    \ WS key (Nustatymai \u2192 Bendrieji \u2192 III \u2192 WS raktas) into a project\
+    \ connection and run the connection test."
 features:
 - tool
 - action
@@ -59,8 +59,8 @@ machine_auth:
   - artifact:write
 account_scope:
   scope_type: project
-  description: Each Centas WS project (its WS key) is a project connection. A project may hold
-    several, for example one per company.
+  description: Each Centas WS project (its WS key) is a project connection. A project
+    may hold several, for example one per company.
 egress:
   hosts:
   - ws.centas.lt
