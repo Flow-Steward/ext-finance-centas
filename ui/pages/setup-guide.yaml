@@ -7,7 +7,7 @@ components:
     title: For the person who runs Centas
     body: |
       1. **Check Centas WS.** The steps use Centas WS (ws.centas.lt), the web exchange of the Centas program. Your company needs it active, and Centas set up to work with it.
-      2. **Copy the WS key.** In Centas open **Parametrai → Nustatymai → Bendrieji → III**. The field **WS raktas** holds the key. Treat it like a password: anyone with it can send documents to your Centas WS and take records from its queue.
+      2. **Get the WS key.** The key is the API key of your Centas WS project, and Centas WS issues it: sign in at [ws.centas.lt](https://ws.centas.lt/interface/login), or register your company there ([register](https://ws.centas.lt/interface/register)). If your company already works with Centas WS, the same key is entered in the Centas program: **Parametrai → Nustatymai → Bendrieji → III**, field **WS raktas**. Treat it like a password: anyone with it can send documents to your Centas WS and take records from its queue.
       3. **Note when the key expires.** A WS key is valid until a date; **Test connection** shows it and warns 30 days before. Renew it in Centas WS in time.
       4. **Upload products and stock, if workflows read them.** The read steps see what Centas uploads to Centas WS:
          - stock: **Nustatymai → Bendrieji → VIII**, *Autom. el. pard. sandėlio atnaujinimas* → **Per Centas WS**;

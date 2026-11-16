@@ -24,6 +24,6 @@ connection_types:
           maxLength: 256
           pattern: "^[\\x21-\\x7e]+$"
           title: WS key
-          description: The project's Centas WS key (WS raktas), as Centas shows it.
+          description: The API key of your Centas WS project (WS raktas), issued by Centas WS.
     capabilities:
       test_connection: true

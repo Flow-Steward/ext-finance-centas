@@ -41,9 +41,10 @@ listing:
   - finance
   - inventory
   - sales
-  setup_summary: "Turn on the Centas WS service for your Centas program, copy its\
-    \ WS key (Nustatymai \u2192 Bendrieji \u2192 III \u2192 WS raktas) into a project\
-    \ connection and run the connection test."
+  setup_summary: "Get the API key of your Centas WS project from Centas WS (ws.centas.lt;\
+    \ a company that already uses it has the same key in the Centas program as WS\
+    \ raktas), add it to a project connection and run the connection test, which also\
+    \ shows the key\u2019s expiry."
 features:
 - tool
 - action

@@ -23,7 +23,7 @@ components:
         widget: secret
         label: WS key
         required: true
-        help: The WS raktas from Centas (Parametrai → Nustatymai → Bendrieji → III).
+        help: The API key of your Centas WS project, issued by Centas WS (see Setup Guide).
     ui_schema:
       actions:
         test_label: Test connection
@@ -31,14 +31,14 @@ components:
     type: markdown
     title: Where the key comes from
     body: |
-      1. In Centas open **Parametrai → Nustatymai → Bendrieji → III** and copy **WS raktas** (see **Setup Guide**).
+      1. The key is the API key of your Centas WS project: Centas WS issues it ([sign in](https://ws.centas.lt/interface/login) or [register](https://ws.centas.lt/interface/register)). If your company already works with Centas WS, the same key is in the Centas program: **Parametrai → Nustatymai → Bendrieji → III**, field **WS raktas** (see **Setup Guide**).
       2. Paste it above and press **Test connection**.
 
       The steps always connect to `https://ws.centas.lt`; there is no address to set.
 
       **If the test fails:**
 
-      - **Authentication failed** — Centas WS does not accept the key: copy it again, or check that it has not expired.
+      - **Authentication failed** — Centas WS does not accept the key: check it again, and that it has not expired.
       - **Connection failed** — ws.centas.lt could not be reached from Flow Steward; try again later.
 
       Test connection checks the key and returns until when it is valid, warning 30 days before it expires. It does not check the right to send documents.

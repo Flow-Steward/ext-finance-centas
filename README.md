@@ -23,7 +23,11 @@ API and where it goes.
 
 ## Setup
 
-1. In Centas, open **Parametrai → Nustatymai → Bendrieji → III** and copy **WS raktas**.
+1. Get your Centas WS project's API key: Centas WS issues it
+   ([sign in](https://ws.centas.lt/interface/login) or
+   [register](https://ws.centas.lt/interface/register)). If your company already works with
+   Centas WS, the same key is in the Centas program: **Parametrai → Nustatymai → Bendrieji →
+   III**, field **WS raktas**. The key has an expiry date.
 2. In Flow Steward, open the extension's **Connection** page, add a connection with that key
    and press **Test connection**: it shows until when the key is valid.
 
