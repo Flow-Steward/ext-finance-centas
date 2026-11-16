@@ -368,3 +368,61 @@ def test_the_key_never_appears_in_a_result_or_an_error() -> None:
     response = run(fake, "send_sales_invoice", invoice())
     assert TOKEN not in dumped(response)
     assert "[redacted]" in response["error"]
+
+
+LIMIT = "999999999999999.99"
+
+
+def test_amounts_up_to_fifteen_whole_digits_are_sent() -> None:
+    fake = FakeCentas(documents__create=ok(document_id="x"))
+    line = {"code": "A", "quantity": 1, "price": LIMIT, "vat_percent": 0}
+    response = run(fake, "send_sales_invoice", invoice(lines=[line]))
+    assert response["ok"] is True, response
+    assert fake.calls[0].form["dok_suma"] == LIMIT
+    given = invoice(lines=[line], net_total=LIMIT, vat_total="0", total=LIMIT)
+    assert (
+        run(FakeCentas(documents__create=ok(document_id="x")), "send_sales_invoice", given)["ok"]
+        is True
+    )
+
+
+@pytest.mark.parametrize(
+    "bad",
+    [
+        # One line beyond the limit: quantity × price.
+        {"lines": [{"code": "A", "quantity": 2, "price": LIMIT, "vat_percent": 0}]},
+        # One line within it, its VAT beyond.
+        {"lines": [{"code": "A", "quantity": 1, "price": LIMIT, "vat_percent": 21}]},
+        # The largest numbers the inputs allow: 30 whole digits before the check.
+        {
+            "lines": [
+                {
+                    "code": "A",
+                    "quantity": "999999999999999.999999",
+                    "price": "999999999999999.999999",
+                    "vat_percent": 100,
+                }
+            ]
+        },
+        # Two lines within it, their sum beyond.
+        {"lines": [{"code": "A", "quantity": 1, "price": LIMIT, "vat_percent": 0}] * 2},
+        # Given totals whose sum is beyond it.
+        {
+            "lines": [{"code": "A", "quantity": 1, "price": LIMIT, "vat_percent": 0}],
+            "net_total": LIMIT,
+            "vat_total": "0.01",
+        },
+    ],
+)
+def test_amounts_beyond_fifteen_whole_digits_are_refused_unsent(bad: dict[str, Any]) -> None:
+    fake = FakeCentas()
+    for operation, inputs in (
+        ("send_sales_invoice", invoice(**bad)),
+        ("send_order", {"number": "U", "date": "2026-11-16", "customer_name": "C", **bad}),
+        ("send_purchase_invoice", {"seller_name": "S", "number": "P", "date": "2026-11-16", **bad}),
+    ):
+        response = run(fake, operation, inputs)
+        assert response["error_code"] == "invalid_payload", (operation, response)
+        assert "15 whole digits" in response["error"]
+        assert response["definitely_no_external_effect"] is True
+    assert fake.calls == []

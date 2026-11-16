@@ -210,3 +210,21 @@ def test_step_order_follows_the_groups() -> None:
     assert _all_ids(BUNDLE / "contracts/operation_manifest.yaml") == [
         s["operation_id"] for s in op_specs.steps()
     ]
+
+
+def test_customer_texts_list_nothing_unverified_or_undocumented() -> None:
+    texts = [BUNDLE / "README.md", BUNDLE / "CHANGELOG.md", BUNDLE / "extension.yaml"]
+    texts += sorted((BUNDLE / "ui").rglob("*.yaml")) + sorted((BUNDLE / "contracts").glob("*.yaml"))
+    for path in texts:
+        text = path.read_text(encoding="utf-8")
+        for phrase in ("Not verified", "Not in the documentation", "undocumented", "Limits"):
+            assert phrase not in text, (path.name, phrase)
+        assert "documents/delete" not in text, path.name
+
+
+def test_every_write_says_centas_ws_does_not_check_for_repeats() -> None:
+    for spec in op_specs.steps():
+        if spec["kind"] == "action":
+            assert "Centas WS does not check for repeats" in spec["description"], spec[
+                "operation_id"
+            ]

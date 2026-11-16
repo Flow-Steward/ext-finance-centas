@@ -71,23 +71,93 @@ def test_only_given_payment_fields_are_sent() -> None:
     assert node.find("Amount").text == "5.00"  # type: ignore[union-attr]
 
 
-def test_a_reference_already_in_the_export_is_a_warning() -> None:
+def test_a_reference_already_in_the_export_stops_the_batch_unsent() -> None:
     fake = FakeCentas(
-        payments__export=payments_xml("<RefNr>ABC001</RefNr><Amount>1</Amount>"),
-        payments__import=ok(payments_found_xml=1, payments_created=1),
+        payments__export=payments_xml(
+            "<RefNr>ABC001</RefNr><Amount>1</Amount>", "<RefNr>OTHER</RefNr>"
+        ),
+        payments__import=ok(payments_found_xml=2, payments_created=2),
     )
-    response = run(fake, "send_payments", {"payments": [PAYMENT]})
-    assert response["ok"] is True
-    assert "ABC001" in response["result"]["warnings"][0]
+    two = [PAYMENT, dict(PAYMENT, reference="NEW002")]
+    response = run(fake, "send_payments", {"payments": two})
+    assert response["error_code"] == "conflict"
+    assert response["definitely_no_external_effect"] is True
+    assert response["external_effect_status"] == "failed"
+    assert "1 of their references (ABC001)" in response["error"]
+    assert fake.paths() == ["payments/export"]
 
 
-def test_an_unreadable_export_does_not_stop_the_payments() -> None:
+def test_many_repeated_references_are_named_up_to_twenty() -> None:
+    refs = [f"R{n:03d}" for n in range(25)]
+    export = payments_xml(*(f"<RefNr>{r}</RefNr>" for r in refs))
+    fake = FakeCentas(payments__export=export)
+    payments = [dict(PAYMENT, reference=r) for r in refs]
+    response = run(fake, "send_payments", {"payments": payments})
+    assert response["error_code"] == "conflict"
+    assert "25 of their references" in response["error"]
+    assert "R019 …" in response["error"] and "R020" not in response["error"]
+    assert fake.paths() == ["payments/export"]
+
+
+@pytest.mark.parametrize(
+    ("answer", "code"),
+    [
+        ((500, b""), "upstream_failure"),
+        ((401, {"success": 0, "error": "Invalid or expired token."}), "authentication_failed"),
+        (b"not xml", "invalid_response"),
+        (TimeoutError(), "timeout"),
+        ({"success": 0, "error": "Klaida"}, "upstream_validation_failed"),
+    ],
+)
+def test_an_unreadable_export_stops_the_batch_unsent(answer: Any, code: str) -> None:
     fake = FakeCentas(
-        payments__export=(500, b""), payments__import=ok(payments_found_xml=1, payments_created=1)
+        payments__export=answer, payments__import=ok(payments_found_xml=1, payments_created=1)
     )
     response = run(fake, "send_payments", {"payments": [PAYMENT]})
-    assert response["ok"] is True
-    assert "could not be read" in response["result"]["warnings"][0]
+    assert response["error_code"] == code, response
+    assert response["definitely_no_external_effect"] is True
+    assert response["external_effect_status"] == "failed"
+    assert response["error"].startswith("No payments were sent")
+    assert fake.paths() == ["payments/export"]
+
+
+def test_an_export_too_large_stops_the_batch_unsent(monkeypatch: pytest.MonkeyPatch) -> None:
+    from runtime import transport
+
+    monkeypatch.setattr(transport, "MAX_EXPORT_BYTES", 10)
+    fake = FakeCentas(payments__export=payments_xml("<RefNr>X</RefNr>"))
+    response = run(fake, "send_payments", {"payments": [PAYMENT]})
+    assert response["error_code"] == "response_too_large"
+    assert response["definitely_no_external_effect"] is True
+    assert fake.paths() == ["payments/export"]
+
+
+def test_no_time_left_after_the_export_stops_the_batch_unsent() -> None:
+    times = iter([0.0, 0.0])
+    fake = FakeCentas(payments__export=payments_xml())
+
+    def clock() -> float:
+        # Deadline set at 0 s, the export starts at 0 s, then time is up.
+        return next(times, 1000.0)
+
+    response = run(fake, "send_payments", {"payments": [PAYMENT]}, clock=clock)
+    assert response["error_code"] == "timeout"
+    assert response["definitely_no_external_effect"] is True
+    assert "payments/import" not in fake.paths()
+
+
+def test_running_out_of_time_reading_the_export_is_reported_as_unsent() -> None:
+    times = iter([0.0])
+    fake = FakeCentas(payments__export=payments_xml())
+
+    def clock() -> float:
+        return next(times, 1000.0)
+
+    response = run(fake, "send_payments", {"payments": [PAYMENT]}, clock=clock)
+    assert response["error_code"] == "timeout"
+    assert response["definitely_no_external_effect"] is True
+    assert response["error"].startswith("No payments were sent")
+    assert fake.paths() == []
 
 
 def test_counts_that_do_not_add_up_are_warnings_with_the_numbers() -> None:

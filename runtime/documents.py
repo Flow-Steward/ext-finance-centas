@@ -26,6 +26,11 @@ from .context import Context
 from .errors import invalid
 
 MAX_LINES = 500
+#: The largest amount a line or a document may reach: 15 whole digits and cents.
+MAX_AMOUNT = Decimal("999999999999999.99")
+#: Digits every sum is taken with (a line is at most 15 + 15 whole digits before the
+#: limit is checked, and a document sums up to 500 lines).
+PRECISION = 60
 
 EU_TYPES = {"local": "0", "eu": "1", "non_eu": "2"}
 
@@ -150,9 +155,10 @@ def _line(
     price = values.not_negative(item.get("price"), f"{what} price")
     rate = values.percent(item.get("vat_percent"), f"{what} VAT percent")
     with localcontext() as ctx:
-        ctx.prec = 60
+        ctx.prec = PRECISION
         net = values.cents(quantity * price)
         vat = values.cents(net * rate / 100)
+        within_limit(net + vat, f"{what} amount with VAT")
     wire: dict[str, str] = {"kodas": str(code)}
     if order:
         supplier = values.text(item.get("supplier_code"), f"{what} supplier code", max_length=50)
@@ -193,6 +199,12 @@ def lines_of(value: Any, allowed: frozenset[str], *, order: bool = False) -> lis
     return [_line(item, i, allowed, order=order) for i, item in enumerate(items, start=1)]
 
 
+def within_limit(amount: Decimal, what: str) -> None:
+    """Refuse an amount beyond 15 whole digits before anything is sent."""
+    if amount > MAX_AMOUNT:
+        raise invalid(f"{what} is larger than {values.money(MAX_AMOUNT)} (15 whole digits)")
+
+
 def tolerance(count: int) -> Decimal:
     """How far given totals may differ from the lines: one cent per line."""
     return values.CENT * count
@@ -201,9 +213,22 @@ def tolerance(count: int) -> Decimal:
 def totals(
     operation_input: Mapping[str, Any], lines: list[Line]
 ) -> tuple[Decimal, Decimal, Decimal]:
-    """(net, VAT, total) to send: given and checked, or computed by one rule."""
+    """(net, VAT, total) to send: given and checked, or computed by one rule.
+
+    Every sum is taken with ``PRECISION`` digits, far beyond the 15 whole digits an
+    amount may have, and refused past that limit before anything is sent.
+    """
+    with localcontext() as ctx:
+        ctx.prec = PRECISION
+        return _totals(operation_input, lines)
+
+
+def _totals(
+    operation_input: Mapping[str, Any], lines: list[Line]
+) -> tuple[Decimal, Decimal, Decimal]:
     computed_net = sum((line.net for line in lines), Decimal("0.00"))
     computed_vat = sum((line.vat for line in lines), Decimal("0.00"))
+    within_limit(computed_net + computed_vat, "The lines' total with VAT")
     given = {k: operation_input.get(k) for k in _TOTALS if operation_input.get(k) is not None}
     if not given:
         return computed_net, computed_vat, computed_net + computed_vat
@@ -215,6 +240,7 @@ def totals(
     net = values.not_negative(given["net_total"], "Net total", places=2)
     vat = values.not_negative(given["vat_total"], "VAT total", places=2)
     total = net + vat
+    within_limit(total, "The total")
     if "total" in given:
         stated = values.not_negative(given["total"], "Total", places=2)
         if stated != total:

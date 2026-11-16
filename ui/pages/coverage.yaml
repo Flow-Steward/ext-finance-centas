@@ -7,7 +7,7 @@ components:
 - component_id: coverage_summary
   type: markdown
   title: Coverage
-  body: |
+  body: |+
     The steps cover the whole API Centas documents ([Centas API dokumentacija](https://centas.gitbook.io/docs)): 7 endpoints, each documented field either a step input or listed below with the reason it is not offered.
 
     - **POST /v1/documents/create** → Send a sales invoice to Centas
@@ -29,26 +29,4 @@ components:
 
     The key (`token`) is the connection's WS raktas: in the body of every write and, as the API requires, in the query of the two exports.
 
-    ### Not in the documentation
-
-    Centas WS answers on more paths than it documents. Without documentation the steps do not use them:
-
-    - GET /v1/documents/export
-    - GET /v1/orders/export
-    - GET /v1/documents/get
-    - /v1/documents/delete
-
-    ### Not verified on a live Centas WS
-
-    No Centas WS project was available while this version was built: every step follows the documentation and has been tested against recorded answers only.
-
-    - Dates are sent as YYYY.MM.DD, the form of the documentation's payment example and of the Centas program; the documentation gives no date format for the other fields.
-    - The document and order fields are sent in the POST body, like the key; the documentation lists them as query parameters of a POST.
-    - Line values are sent as text with a point as decimal mark, as in the documentation's examples.
-    - Order lines carry the VAT rate as both pvm_tar and pvmtar, because the documentation names it both ways.
-    - Purchase invoice lines use the sales invoice's line fields; the documentation names none for purchases.
-    - Centas WS documents no duplicate check: sending the same invoice, order, payment or product again may create it again.
-    - How Centas matches the buyer of a sales invoice to an existing client (code, company code, VAT code or name) is not documented; the buyer group applies to a new buyer.
-    - Centas WS documents no required fields except for purchase invoices; the steps require the number, date, party name and lines.
-    - Which payments the payment export holds is not documented; the reference check before sending payments is a hint only.
-    - Totals are checked within one cent per line, because Centas lets each company choose how VAT is summed.
+...

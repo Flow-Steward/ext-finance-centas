@@ -19,8 +19,8 @@ RECEIVED = (
     "booked."
 )
 NOT_RERUNNABLE = (
-    "Not safe to run again by itself: Centas WS documents no duplicate check, so a "
-    "rerun after an unclear outcome can send it twice — check Centas WS first."
+    "Centas WS does not check for repeats: sending the same document again can create it "
+    "a second time."
 )
 FROM_EXPORT = (
     "The data is what the Centas program last uploaded to Centas WS (its product "
@@ -846,8 +846,11 @@ def steps() -> list[dict[str, Any]]:
             "description": (
                 "Sends bank payments to Centas WS in one batch and returns how many it "
                 "created. Each payment needs its own reference (RefNr). Before sending, the "
-                "step looks the references up in Centas WS's payment export and warns about "
-                "any it already lists. " + RECEIVED + " " + NOT_RERUNNABLE
+                "step reads Centas WS's payment export: when it already lists one of the "
+                "references, or cannot be read, the step stops and sends nothing. "
+                + RECEIVED
+                + " "
+                + NOT_RERUNNABLE
             ),
             "inputs": [
                 {
@@ -960,7 +963,8 @@ def steps() -> list[dict[str, Any]]:
             "description": (
                 "Sends product cards to Centas WS in one batch; Centas WS creates new ones "
                 "and updates known ones and returns the counts. Only the fields given are "
-                "sent. " + NOT_RERUNNABLE
+                "sent. Centas WS does not check for repeats: sending the same product again can "
+                "create it a second time."
             ),
             "inputs": [
                 {

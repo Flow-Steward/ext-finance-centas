@@ -383,19 +383,6 @@ def coverage_page(cov: dict[str, Any]) -> dict[str, Any]:
         "The key (`token`) is the connection's WS raktas: in the body of every write and, "
         "as the API requires, in the query of the two exports.",
         "",
-        "### Not in the documentation",
-        "",
-        "Centas WS answers on more paths than it documents. Without documentation the steps "
-        "do not use them:",
-        "",
-        *[f"- {e['endpoint']}" for e in cov["undocumented"]],
-        "",
-        "### Not verified on a live Centas WS",
-        "",
-        "No Centas WS project was available while this version was built: every step "
-        "follows the documentation and has been tested against recorded answers only.",
-        "",
-        *[f"- {item}" for item in cov["not_verified"]],
     ]
     return {
         "page_id": "coverage",

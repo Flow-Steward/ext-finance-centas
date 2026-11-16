@@ -22,6 +22,7 @@ from . import errors, values
 from .context import Context
 from .errors import ExtensionError, invalid
 from .exports import payments_of
+from .transport import DeadlineReached
 
 MAX_PAYMENTS = 500
 MAX_PRODUCTS = 500
@@ -131,11 +132,12 @@ def payments_xml(operation_input: Mapping[str, Any]) -> tuple[str, list[str]]:
     return xml_document(root), references
 
 
-def _known_references(context: Context, references: list[str]) -> list[str]:
-    """Warnings for references Centas WS's payment export already holds.
+def _check_references(context: Context, references: list[str]) -> None:
+    """Refuse the batch when Centas WS's payment export already holds one of its
+    references, or when the export cannot be read to check: nothing is sent then.
 
-    The documentation does not say which payments the export holds, so a match is a
-    hint, not proof of a duplicate, and the payments are sent all the same.
+    Whatever the export holds, a reference found in it means Centas WS already knows
+    that payment.
     """
     try:
         raw = context.transport.export("payments/export")
@@ -144,19 +146,29 @@ def _known_references(context: Context, references: list[str]) -> list[str]:
             for p in payments_of(raw, context.transport)[0]
             if p.get("reference")
         }
-    except ExtensionError:
-        return [
-            "The payment export could not be read to look for these references before "
-            "sending; the payments were sent without that check"
-        ]
+    except DeadlineReached:
+        raise errors.no_effect(
+            errors.TIMEOUT,
+            "No payments were sent: the step ran out of time reading Centas WS's payment "
+            "export, so it could not check them for repeats",
+        ) from None
+    except ExtensionError as exc:
+        raise errors.no_effect(
+            exc.code,
+            "No payments were sent: Centas WS's payment export could not be read to check "
+            f"them for repeats ({exc.message})",
+            failure_class=exc.failure_class,
+            retryable=exc.retryable,
+            http_status=exc.http_status,
+        ) from None
     repeated = [r for r in references if r in known]
-    if not repeated:
-        return []
-    shown = ", ".join(repeated[:20]) + (" …" if len(repeated) > 20 else "")
-    return [
-        f"Centas WS's payment export already lists {len(repeated)} of these references "
-        f"({shown}); they were sent again — check in Centas for duplicates"
-    ]
+    if repeated:
+        shown = ", ".join(repeated[:20]) + (" …" if len(repeated) > 20 else "")
+        raise errors.no_effect(
+            errors.CONFLICT,
+            f"No payments were sent: Centas WS's payment export already lists {len(repeated)} "
+            f"of their references ({shown})",
+        )
 
 
 def _count(answer: Mapping[str, Any], key: str) -> int | None:
@@ -174,7 +186,8 @@ def _count(answer: Mapping[str, Any], key: str) -> int | None:
 
 def send_payments(context: Context) -> dict[str, Any]:
     document, references = payments_xml(context.operation_input)
-    warnings = _known_references(context, references)
+    _check_references(context, references)
+    warnings: list[str] = []
     answer = context.transport.write("payments/import", [("data", document)])
     found = _count(answer, "payments_found_xml")
     created = _count(answer, "payments_created")

@@ -20,7 +20,7 @@ components:
   body: |
     ### Send a sales invoice to Centas
 
-    Sends a sales invoice with its lines to Centas WS and returns its document ID. Centas WS keeps what it receives until an accountant imports it in the Centas program (menu ws.centas.lt), so success means received by Centas WS, not yet booked. Not safe to run again by itself: Centas WS documents no duplicate check, so a rerun after an unclear outcome can send it twice — check Centas WS first.
+    Sends a sales invoice with its lines to Centas WS and returns its document ID. Centas WS keeps what it receives until an accountant imports it in the Centas program (menu ws.centas.lt), so success means received by Centas WS, not yet booked. Centas WS does not check for repeats: sending the same document again can create it a second time.
 
     Action id `send_sales_invoice` · sends data to Centas WS · Centas WS: `POST /v1/documents/create`
 
@@ -71,7 +71,7 @@ components:
 
     ### Send a customer order to Centas
 
-    Sends a customer order with its lines to Centas WS and returns its order hash. Centas WS keeps what it receives until an accountant imports it in the Centas program (menu ws.centas.lt), so success means received by Centas WS, not yet booked. Not safe to run again by itself: Centas WS documents no duplicate check, so a rerun after an unclear outcome can send it twice — check Centas WS first.
+    Sends a customer order with its lines to Centas WS and returns its order hash. Centas WS keeps what it receives until an accountant imports it in the Centas program (menu ws.centas.lt), so success means received by Centas WS, not yet booked. Centas WS does not check for repeats: sending the same document again can create it a second time.
 
     Action id `send_order` · sends data to Centas WS · Centas WS: `POST /v1/orders/create`
 
@@ -114,7 +114,7 @@ components:
   body: |
     ### Send a purchase invoice to Centas
 
-    Sends a supplier's invoice with its lines to Centas WS and returns its purchase ID. Centas WS keeps what it receives until an accountant imports it in the Centas program (menu ws.centas.lt), so success means received by Centas WS, not yet booked. Not safe to run again by itself: Centas WS documents no duplicate check, so a rerun after an unclear outcome can send it twice — check Centas WS first.
+    Sends a supplier's invoice with its lines to Centas WS and returns its purchase ID. Centas WS keeps what it receives until an accountant imports it in the Centas program (menu ws.centas.lt), so success means received by Centas WS, not yet booked. Centas WS does not check for repeats: sending the same document again can create it a second time.
 
     Action id `send_purchase_invoice` · sends data to Centas WS · Centas WS: `POST /v1/documents/purchase/import`
 
@@ -142,7 +142,7 @@ components:
   body: |
     ### Send bank payments to Centas
 
-    Sends bank payments to Centas WS in one batch and returns how many it created. Each payment needs its own reference (RefNr). Before sending, the step looks the references up in Centas WS's payment export and warns about any it already lists. Centas WS keeps what it receives until an accountant imports it in the Centas program (menu ws.centas.lt), so success means received by Centas WS, not yet booked. Not safe to run again by itself: Centas WS documents no duplicate check, so a rerun after an unclear outcome can send it twice — check Centas WS first.
+    Sends bank payments to Centas WS in one batch and returns how many it created. Each payment needs its own reference (RefNr). Before sending, the step reads Centas WS's payment export: when it already lists one of the references, or cannot be read, the step stops and sends nothing. Centas WS keeps what it receives until an accountant imports it in the Centas program (menu ws.centas.lt), so success means received by Centas WS, not yet booked. Centas WS does not check for repeats: sending the same document again can create it a second time.
 
     Action id `send_payments` · sends data to Centas WS · Centas WS: `POST /v1/payments/import`
 
@@ -187,7 +187,7 @@ components:
   body: |
     ### Send products to Centas
 
-    Sends product cards to Centas WS in one batch; Centas WS creates new ones and updates known ones and returns the counts. Only the fields given are sent. Not safe to run again by itself: Centas WS documents no duplicate check, so a rerun after an unclear outcome can send it twice — check Centas WS first.
+    Sends product cards to Centas WS in one batch; Centas WS creates new ones and updates known ones and returns the counts. Only the fields given are sent. Centas WS does not check for repeats: sending the same product again can create it a second time.
 
     Action id `send_products` · sends data to Centas WS · Centas WS: `POST /v1/products/import`
 

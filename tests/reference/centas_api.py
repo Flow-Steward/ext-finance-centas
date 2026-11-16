@@ -230,8 +230,8 @@ NOT_VERIFIED: list[str] = [
     "code, VAT code or name) is not documented; the buyer group applies to a new buyer.",
     "Centas WS documents no required fields except for purchase invoices; the steps "
     "require the number, date, party name and lines.",
-    "Which payments the payment export holds is not documented; the reference check "
-    "before sending payments is a hint only.",
+    "Which payments the payment export holds is not documented; Send bank payments stops "
+    "without sending when a reference is already in it or it cannot be read.",
     "Totals are checked within one cent per line, because Centas lets each company choose "
     "how VAT is summed.",
 ]
