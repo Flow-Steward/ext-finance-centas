@@ -3,10 +3,10 @@
 operations:
 - operation_id: send_sales_invoice
   display_name: Send a sales invoice to Centas
-  description: 'Sends a sales invoice with its lines to Centas WS and returns its document ID. Centas
-    WS keeps what it receives until an accountant imports it in the Centas program (menu ws.centas.lt),
-    so success means received by Centas WS, not yet booked. Centas WS does not check for repeats: sending
-    the same document again can create it a second time.'
+  description: 'Sends a sales invoice with its lines and returns its document ID. Centas WS refuses a
+    number it already has (a conflict, nothing saved). Centas WS keeps it until the Centas program imports
+    it, so success means Centas WS received it. Centas WS does not check for repeats: sending the same
+    invoice under the automatic number again can create it a second time.'
   operation_kind: action
   category: finance
   connection_type_ids:
@@ -14,26 +14,17 @@ operations:
   workflow_visible: true
   effect_kind: centas_send_sales_invoice
   inputs:
-  - &id002
+  - &id003
     name: connection_ref
     value_type: connection_ref
     required: true
   - name: number
     value_type: text
-    required: false
+    required: true
     schema:
       type: string
       title: Invoice number
-      description: The invoice number (dok_num). Leave empty, or write auto, to have Centas number it
-        from its free invoice forms; then give the transaction ID.
-      maxLength: 50
-  - name: transaction_id
-    value_type: text
-    required: false
-    schema:
-      type: string
-      title: Transaction ID
-      description: Needed for an automatic number from Centas's invoice forms (trans_id).
+      description: The invoice number (dok_num), or auto for Centas's automatic numbering.
       maxLength: 50
   - name: date
     value_type: text
@@ -46,11 +37,11 @@ operations:
       pattern: ^\d{4}-\d{2}-\d{2}$
   - name: due_date
     value_type: text
-    required: false
+    required: true
     schema:
       type: string
       title: Due date
-      description: The payment term (apmok_iki). YYYY-MM-DD.
+      description: The payment due date (apmok_iki). YYYY-MM-DD.
       maxLength: 10
       pattern: ^\d{4}-\d{2}-\d{2}$
   - name: buyer_name
@@ -61,21 +52,130 @@ operations:
       title: Buyer name
       description: The buyer's name (pirkejas).
       maxLength: 255
-  - name: buyer_code
+  - name: cost
+    value_type: text
+    required: true
+    schema:
+      type: &id001
+      - number
+      - string
+      title: Cost
+      description: The document's cost price total (savikaina).
+  - name: lines
+    value_type: array
+    required: true
+    schema:
+      type: array
+      title: Lines
+      description: 'The invoice lines, 1 to 500: code, name, unit, quantity, price without VAT, vat_percent;
+        optionally kind, ean, vat_code, income_account, project, vat_amount, discount_percent, discount,
+        hs_code, country_origin, material.'
+      minItems: 1
+      maxItems: 500
+      items:
+        type: object
+        additionalProperties: false
+        required:
+        - code
+        - name
+        - unit
+        - quantity
+        - price
+        - vat_percent
+        properties:
+          code: &id010
+            type: string
+            maxLength: 50
+            description: Product or service code (kodas).
+          name: &id011
+            type: string
+            maxLength: 255
+            description: Name (pavadinimas).
+          unit: &id012
+            type: string
+            maxLength: 20
+            description: Unit of measure, for example vnt. (matovnt).
+          quantity: &id013
+            type: *id001
+            description: Quantity, greater than zero (kiekis).
+          price: &id014
+            type: *id001
+            description: Unit price without VAT, up to 6 decimals (kaina).
+          vat_percent: &id015
+            type: *id001
+            description: VAT rate in percent, 0 to 100 (pvmtar).
+          kind:
+            type: string
+            maxLength: 5
+            description: Product or service mark, for example P (prek_pasl).
+          ean:
+            type: string
+            maxLength: 20
+            description: EAN barcode (ean).
+          vat_code:
+            type: string
+            maxLength: 20
+            description: VAT classifier code, for example PVM1 (Mok_kodas).
+          income_account:
+            type: string
+            maxLength: 20
+            description: Income account (sask_pajamos).
+          project:
+            type: string
+            maxLength: 100
+            description: Project (projektas).
+          vat_amount:
+            type: *id001
+            description: The line's VAT amount, 2 decimals (pvmsuma).
+          discount_percent:
+            type: *id001
+            description: Discount in percent (nuolaida_proc).
+          discount:
+            type: *id001
+            description: Discount amount, 2 decimals (nuolaida).
+          hs_code:
+            type: string
+            maxLength: 20
+            description: HS (customs) code (hs_code).
+          country_origin:
+            type: string
+            maxLength: 20
+            description: Country of origin (country_origin).
+          material:
+            type: string
+            maxLength: 100
+            description: Material (material).
+  - name: net_total
     value_type: text
     required: false
-    schema:
-      type: string
-      title: Buyer code
-      description: The buyer's code in your systems (kl_kodas).
-      maxLength: 50
+    schema: &id016
+      type: *id001
+      title: Net total
+      description: 'The total without VAT (bepvm_suma). Give the net total and the VAT total (and optionally
+        the total) as on the document: they are checked against the lines within one cent per line and
+        sent as given. Leave them empty to have them computed: each line''s net amount rounded to cents,
+        its VAT rounded to cents, summed. Lines with a discount or their own VAT amount need the totals.'
+  - name: vat_total
+    value_type: text
+    required: false
+    schema: &id017
+      type: *id001
+      title: VAT total
+      description: The VAT amount (pvm_suma).
+  - name: total
+    value_type: text
+    required: false
+    schema: &id022
+      type: *id001
+      title: Total
+      description: The total with VAT; must be net total + VAT total.
   - name: buyer_company_code
     value_type: text
     required: false
     schema:
       type: string
       title: Buyer company code
-      description: The buyer's company or personal code (im_kodas).
+      description: The buyer's company code (im_kodas).
       maxLength: 50
   - name: buyer_vat_code
     value_type: text
@@ -85,30 +185,6 @@ operations:
       title: Buyer VAT code
       description: The buyer's VAT code (pvm_kodas).
       maxLength: 50
-  - name: buyer_email
-    value_type: text
-    required: false
-    schema:
-      type: string
-      title: Buyer e-mail
-      description: The buyer's e-mail (email).
-      maxLength: 255
-  - name: buyer_address
-    value_type: text
-    required: false
-    schema:
-      type: string
-      title: Buyer address
-      description: The buyer's address (adresas).
-      maxLength: 255
-  - name: buyer_city
-    value_type: text
-    required: false
-    schema:
-      type: string
-      title: Buyer city
-      description: The buyer's city (miestas).
-      maxLength: 100
   - name: buyer_country
     value_type: text
     required: false
@@ -117,6 +193,78 @@ operations:
       title: Buyer country
       description: The buyer's country (salis).
       maxLength: 100
+  - name: buyer_city
+    value_type: text
+    required: false
+    schema:
+      type: string
+      title: Buyer city
+      description: The buyer's city (miestas).
+      maxLength: 100
+  - name: buyer_address
+    value_type: text
+    required: false
+    schema:
+      type: string
+      title: Buyer address
+      description: The buyer's address (adresas).
+      maxLength: 255
+  - name: buyer_email
+    value_type: text
+    required: false
+    schema:
+      type: string
+      title: Buyer e-mail
+      description: The buyer's e-mail (email).
+      maxLength: 255
+  - name: number_series
+    value_type: text
+    required: false
+    schema:
+      type: string
+      title: Number series
+      description: The document number series (dok_num_series).
+      maxLength: 20
+  - name: order_number
+    value_type: text
+    required: false
+    schema:
+      type: string
+      title: Order number
+      description: The related order number (uzsaknr).
+      maxLength: 50
+  - name: check_order
+    value_type: text
+    required: false
+    schema:
+      type: string
+      title: Check order
+      description: Check the related order (check_order).
+      maxLength: 50
+  - name: document_type
+    value_type: text
+    required: false
+    schema:
+      type: string
+      title: Document type
+      description: The document type (type).
+      maxLength: 20
+  - name: transaction_id
+    value_type: text
+    required: false
+    schema:
+      type: string
+      title: Transaction ID
+      description: Transaction ID for a number from Centas's invoice forms (trans_id).
+      maxLength: 50
+  - name: buyer_code
+    value_type: text
+    required: false
+    schema:
+      type: string
+      title: Buyer code
+      description: The buyer's code in your systems (kl_kodas).
+      maxLength: 50
   - name: buyer_eu_type
     value_type: text
     required: false
@@ -134,100 +282,15 @@ operations:
     schema:
       type: string
       title: Buyer group
-      description: The group a new buyer is put in (grupe).
+      description: The group of a new buyer (grupe).
       maxLength: 50
-  - name: lines
-    value_type: array
-    required: true
-    schema:
-      type: array
-      title: Lines
-      description: 'The invoice lines, 1 to 500: code, name, unit, quantity, price without VAT, vat_percent,
-        vat_code, income_account, project.'
-      minItems: 1
-      maxItems: 500
-      items:
-        type: object
-        additionalProperties: false
-        required:
-        - code
-        - quantity
-        - price
-        - vat_percent
-        properties:
-          code: &id009
-            type: string
-            maxLength: 50
-            description: The product's or service's code; Centas looks it up by this code (kodas).
-          name: &id010
-            type: string
-            maxLength: 255
-            description: Its name (pavadinimas).
-          unit: &id011
-            type: string
-            maxLength: 20
-            description: Its unit of measure, for example vnt. (matovnt).
-          quantity: &id012
-            type: &id001
-            - number
-            - string
-            description: Quantity, greater than zero (kiekis).
-          price: &id013
-            type: *id001
-            description: Unit price without VAT, up to 6 decimals (kaina).
-          vat_percent: &id014
-            type: *id001
-            description: VAT rate in percent, 0 to 100 (pvmtar).
-          vat_code: &id015
-            type: string
-            maxLength: 20
-            description: VAT tax code of the VMI classifier for i.SAF (Mok_kodas).
-          income_account:
-            type: string
-            maxLength: 20
-            description: The line's income account (sask_pajamos).
-          project: &id016
-            type: string
-            maxLength: 100
-            description: The line's project (projektas).
-  - name: net_total
-    value_type: text
-    required: false
-    schema: &id017
-      type: *id001
-      title: Net total
-      description: 'The total without VAT (bepvm_suma). Give the net total and the VAT total (and optionally
-        the total) as on the document: they are checked against the lines within one cent per line and
-        sent as given. Leave them empty to have them computed: each line''s net amount rounded to cents,
-        its VAT rounded to cents, summed.'
-  - name: vat_total
-    value_type: text
-    required: false
-    schema: &id018
-      type: *id001
-      title: VAT total
-      description: The VAT amount (pvm_suma).
-  - name: total
-    value_type: text
-    required: false
-    schema: &id019
-      type: *id001
-      title: Total
-      description: The total with VAT; must be net total + VAT total.
-  - name: cost
-    value_type: text
-    required: false
-    schema:
-      type: *id001
-      title: Cost
-      description: The document's cost price (savikaina).
   - name: vat_payable_account
     value_type: text
     required: false
     schema:
       type: string
       title: VAT payable account
-      description: The VAT payable account, digits (sask_moketpvm).
+      description: VAT payable account, digits (sask_moketpvm).
       maxLength: 20
       pattern: ^\d+$
   - name: receivable_account
@@ -236,7 +299,7 @@ operations:
     schema:
       type: string
       title: Receivable account
-      description: The buyer debt account (sask_pirkskol).
+      description: Buyer debt account (sask_pirkskol).
       maxLength: 20
   - name: income_account
     value_type: text
@@ -244,7 +307,7 @@ operations:
     schema:
       type: string
       title: Income account
-      description: The income account, digits (sask_pajamos).
+      description: Income account, digits (sask_pajamos).
       maxLength: 20
       pattern: ^\d+$
   - name: project
@@ -253,23 +316,15 @@ operations:
     schema:
       type: string
       title: Project
-      description: The project or cost centre (projektas).
+      description: Project or cost centre (projektas).
       maxLength: 100
-  - name: order_number
-    value_type: text
-    required: false
-    schema:
-      type: string
-      title: Order number
-      description: The number of the order this invoice is for (uzsaknr).
-      maxLength: 50
   - name: operation_description
     value_type: text
     required: false
     schema:
       type: string
       title: Operation description
-      description: An extra description of the operation (oper_apras).
+      description: Extra description of the operation (oper_apras).
       maxLength: 255
   - name: note
     value_type: text
@@ -285,7 +340,7 @@ operations:
     schema:
       type: string
       title: Issued by
-      description: Who issued the invoice (israse_asmuo).
+      description: Who issued it (israse_asmuo).
       maxLength: 100
   - name: issued_by_position
     value_type: text
@@ -301,7 +356,7 @@ operations:
     schema:
       type: string
       title: Intrastat transport
-      description: Transport code for Intrastat (intrs_transprusis).
+      description: Intrastat transport code (intrs_transprusis).
       maxLength: 20
   - name: intrastat_delivery_terms
     value_type: text
@@ -309,7 +364,7 @@ operations:
     schema:
       type: string
       title: Intrastat delivery terms
-      description: Delivery terms code for Intrastat (intrs_pristsal).
+      description: Intrastat delivery terms code (intrs_pristsal).
       maxLength: 20
   - name: intrastat_transaction
     value_type: text
@@ -317,7 +372,7 @@ operations:
     schema:
       type: string
       title: Intrastat transaction
-      description: Transaction code for Intrastat (intrs_sandoris).
+      description: Intrastat transaction code (intrs_sandoris).
       maxLength: 20
   - name: intrastat_county
     value_type: text
@@ -325,7 +380,7 @@ operations:
     schema:
       type: string
       title: Intrastat county
-      description: County code for Intrastat (intrs_apskritis).
+      description: Intrastat county code (intrs_apskritis).
       maxLength: 20
   - name: intrastat_eu_country
     value_type: text
@@ -333,41 +388,41 @@ operations:
     schema:
       type: string
       title: Intrastat EU country
-      description: EU country code for Intrastat (intrs_eusalis).
+      description: Intrastat EU country code (intrs_eusalis).
       maxLength: 20
   outputs:
   - name: document_id
     value_type: text
     schema:
-      type: &id003
+      type: &id002
       - string
       - 'null'
       description: The document ID Centas WS returned.
-  - &id004
+  - &id018
     name: number
     value_type: text
     schema:
-      type: string
-      description: The number sent (auto when Centas numbers it).
-  - &id005
+      type: *id002
+      description: The number sent.
+  - &id019
     name: net_total
     value_type: text
     schema:
-      type: string
+      type: *id002
       description: The net total sent.
-  - &id006
+  - &id020
     name: vat_total
     value_type: text
     schema:
-      type: string
+      type: *id002
       description: The VAT total sent.
-  - &id007
+  - &id021
     name: total
     value_type: text
     schema:
-      type: string
+      type: *id002
       description: The total sent.
-  - &id008
+  - &id004
     name: warnings
     value_type: array
     schema:
@@ -410,12 +465,585 @@ operations:
   - redirect_rejected
   - blocked_address
   - timeout_unknown
+- operation_id: get_sales_document
+  display_name: Get a sales document by number
+  description: Reads one sales document by its number, with the fields Centas WS returns.
+  operation_kind: source
+  category: finance
+  connection_type_ids:
+  - centas
+  workflow_visible: true
+  inputs:
+  - *id003
+  - name: number
+    value_type: text
+    required: true
+    schema:
+      type: string
+      title: Document number
+      description: The document number.
+      maxLength: 50
+  outputs:
+  - name: found
+    value_type: boolean
+    schema:
+      type: boolean
+      description: True when Centas WS returned the document.
+  - name: document
+    value_type: object
+    schema:
+      type:
+      - object
+      - 'null'
+      additionalProperties: true
+      description: The document as Centas WS returns it, or null.
+  - *id004
+  result_fields:
+  - result.found
+  - result.document
+  - result.warnings
+  error_codes:
+  - invalid_payload
+  - invalid_host_envelope
+  - invalid_connection
+  - unsupported_operation
+  - internal_error
+  - authentication_failed
+  - not_found
+  - conflict
+  - upstream_validation_failed
+  - upstream_failure
+  - invalid_response
+  - response_too_large
+  - timeout
+  - connection_failed
+  - redirect_rejected
+  - blocked_address
+- operation_id: get_sales_documents
+  display_name: Get sales documents by date or unpaid
+  description: Reads sales documents of a date range, or all unpaid ones, with their rows. With these
+    filters Centas WS ignores its downloaded mark, so nothing is taken from the queue.
+  operation_kind: source
+  category: finance
+  connection_type_ids:
+  - centas
+  workflow_visible: true
+  inputs:
+  - *id003
+  - name: date_from
+    value_type: text
+    required: false
+    schema:
+      type: string
+      title: From date
+      description: Only documents on or after this date. YYYY-MM-DD.
+      maxLength: 10
+      pattern: ^\d{4}-\d{2}-\d{2}$
+  - name: date_to
+    value_type: text
+    required: false
+    schema:
+      type: string
+      title: To date
+      description: Only documents on or before this date. YYYY-MM-DD.
+      maxLength: 10
+      pattern: ^\d{4}-\d{2}-\d{2}$
+  - name: unpaid
+    value_type: boolean
+    required: false
+    schema:
+      type: boolean
+      title: Unpaid only
+      description: Only unpaid documents (apmoketa = 0).
+  - name: page
+    value_type: integer
+    required: false
+    schema:
+      type: integer
+      minimum: 1
+      maximum: 1000000
+      title: Page
+      description: The page to read, from 1; pass next_page to continue.
+  - name: limit
+    value_type: integer
+    required: false
+    schema:
+      type: integer
+      minimum: 1
+      maximum: 500
+      title: Rows
+      description: Rows per page, 1 to 500. Default 100.
+  outputs:
+  - name: items
+    value_type: array
+    schema:
+      type: array
+      items: &id005
+        type: object
+        additionalProperties: true
+        description: 'A sales document: type, dok_num, data, apmok_iki, pirkejas, dok_suma, pvm_suma,
+          bepvm_suma, savikaina, im_kodas, pvm_kodas, apmoketa, dok_skola, eilute (rows).'
+        properties:
+          type:
+            description: Document type.
+          dok_num:
+            description: Number.
+          data:
+            description: Date.
+          apmok_iki:
+            description: Due date.
+          pirkejas:
+            description: Buyer.
+          dok_suma:
+            description: Total.
+          pvm_suma:
+            description: VAT.
+          bepvm_suma:
+            description: Net total.
+          savikaina:
+            description: Cost.
+          im_kodas:
+            description: Buyer company code.
+          pvm_kodas:
+            description: Buyer VAT code.
+          apmoketa:
+            description: Paid (0 or 1).
+          dok_skola:
+            description: Remaining debt.
+          eilute:
+            type: array
+            description: 'Rows: kodas, pavadinimas, matovnt, kiekis, kaina, pvmtar.'
+      description: The documents of this page.
+  - name: count
+    value_type: integer
+    schema:
+      type: integer
+      description: How many rows this page holds.
+  - name: total
+    value_type: integer
+    schema:
+      type: integer
+      description: How many rows Centas WS returned in all.
+  - name: page
+    value_type: integer
+    schema:
+      type: integer
+      description: This page's number.
+  - name: has_more
+    value_type: boolean
+    schema:
+      type: boolean
+      description: True when more rows follow.
+  - name: next_page
+    value_type: integer
+    schema:
+      type: &id006
+      - integer
+      - 'null'
+      description: The page to read next, or null.
+  - *id004
+  result_fields:
+  - result.items
+  - result.count
+  - result.total
+  - result.page
+  - result.has_more
+  - result.next_page
+  - result.warnings
+  error_codes:
+  - invalid_payload
+  - invalid_host_envelope
+  - invalid_connection
+  - unsupported_operation
+  - internal_error
+  - authentication_failed
+  - not_found
+  - conflict
+  - upstream_validation_failed
+  - upstream_failure
+  - invalid_response
+  - response_too_large
+  - timeout
+  - connection_failed
+  - redirect_rejected
+  - blocked_address
+- operation_id: take_new_sales_documents
+  display_name: Take new sales documents from the Centas WS queue
+  description: 'Reads the sales documents not yet marked as downloaded. Takes them from the Centas WS
+    queue: Centas WS marks what it hands out, so the Centas program will no longer see these records as
+    new. The answer is also saved whole as a workflow file.'
+  operation_kind: action
+  category: finance
+  connection_type_ids:
+  - centas
+  workflow_visible: true
+  effect_kind: centas_take_new_sales_documents
+  inputs:
+  - *id003
+  outputs:
+  - name: items
+    value_type: array
+    schema:
+      type: array
+      items: *id005
+      description: The records taken (empty when they do not fit the step output; then they are all in
+        the file).
+  - name: count
+    value_type: integer
+    schema:
+      type: integer
+      description: How many records were taken.
+  - name: file
+    value_type: artifact_handle
+    schema:
+      type: *id002
+      description: Centas WS's answer, whole, as an XML workflow file.
+  - *id004
+  - name: external_effect_status
+    value_type: text
+    schema:
+      type: string
+  - name: definitely_no_external_effect
+    value_type: boolean
+    schema:
+      type: boolean
+  result_fields:
+  - result.items
+  - result.count
+  - result.file
+  - result.warnings
+  - result.external_effect_status
+  - result.definitely_no_external_effect
+  error_codes:
+  - invalid_payload
+  - invalid_host_envelope
+  - invalid_connection
+  - unsupported_operation
+  - internal_error
+  - authentication_failed
+  - not_found
+  - conflict
+  - upstream_validation_failed
+  - upstream_failure
+  - invalid_response
+  - response_too_large
+  - timeout
+  - connection_failed
+  - redirect_rejected
+  - blocked_address
+  - timeout_unknown
+  - artifact_output_unavailable
+- operation_id: update_sales_documents
+  display_name: Update sales documents' payment status
+  description: Sets the downloaded mark, the paid mark or the remaining debt of sales documents named
+    by type, number and date; fields not given stay unchanged.
+  operation_kind: action
+  category: finance
+  connection_type_ids:
+  - centas
+  workflow_visible: true
+  effect_kind: centas_update_sales_documents
+  inputs:
+  - *id003
+  - name: documents
+    value_type: array
+    required: true
+    schema:
+      type: array
+      title: Documents
+      description: 'The documents, 1 to 500: type, number, date and at least one of downloaded, paid,
+        remaining_debt.'
+      minItems: 1
+      maxItems: 500
+      items:
+        type: object
+        additionalProperties: false
+        required:
+        - type
+        - number
+        - date
+        properties:
+          type: &id007
+            type: string
+            maxLength: 20
+            description: Document type, for example deb (type).
+          number: &id008
+            type: string
+            maxLength: 50
+            description: Document number, exactly — no wildcards (number).
+          date: &id009
+            type: string
+            pattern: ^\d{4}-\d{2}-\d{2}$
+            description: Document date (date). YYYY-MM-DD.
+          downloaded:
+            type: boolean
+            description: Mark as downloaded, or not (downloaded).
+          paid:
+            type: boolean
+            description: Paid, or not (apmoketa).
+          remaining_debt:
+            type: *id001
+            description: Remaining unpaid amount (dok_skola).
+  outputs:
+  - name: sent
+    value_type: integer
+    schema:
+      type: integer
+      description: How many documents were sent.
+  - name: documents_found
+    value_type: integer
+    schema:
+      type: *id006
+      description: How many Centas WS found.
+  - name: documents_updated
+    value_type: integer
+    schema:
+      type: *id006
+      description: How many it updated.
+  - *id004
+  - name: external_effect_status
+    value_type: text
+    schema:
+      type: string
+  - name: definitely_no_external_effect
+    value_type: boolean
+    schema:
+      type: boolean
+  result_fields:
+  - result.sent
+  - result.documents_found
+  - result.documents_updated
+  - result.warnings
+  - result.external_effect_status
+  - result.definitely_no_external_effect
+  error_codes:
+  - invalid_payload
+  - invalid_host_envelope
+  - invalid_connection
+  - unsupported_operation
+  - internal_error
+  - authentication_failed
+  - not_found
+  - conflict
+  - upstream_validation_failed
+  - upstream_failure
+  - invalid_response
+  - response_too_large
+  - timeout
+  - connection_failed
+  - redirect_rejected
+  - blocked_address
+  - timeout_unknown
+- operation_id: record_document_payments
+  display_name: Record payments against sales documents
+  description: 'Records payments against sales documents named by type, number and date, with the amount
+    paid and the payments themselves. Centas WS does not check for repeats: sending the same payment again
+    can create it a second time.'
+  operation_kind: action
+  category: finance
+  connection_type_ids:
+  - centas
+  workflow_visible: true
+  effect_kind: centas_record_document_payments
+  inputs:
+  - *id003
+  - name: documents
+    value_type: array
+    required: true
+    schema:
+      type: array
+      title: Documents
+      description: 'The documents, 1 to 500: type, number, date, paid_sum, paid_in_full, customer_id and
+        payments [{date, number, description, total}].'
+      minItems: 1
+      maxItems: 500
+      items:
+        type: object
+        additionalProperties: false
+        required:
+        - type
+        - number
+        - date
+        - paid_sum
+        - payments
+        properties:
+          type: *id007
+          number: *id008
+          date: *id009
+          paid_sum:
+            type: *id001
+            description: Amount paid (paid_sum).
+          paid_in_full:
+            type: boolean
+            description: Paid in full (paid_full).
+          customer_id:
+            type: string
+            maxLength: 50
+            description: Customer ID (customerId).
+          payments:
+            type: array
+            maxItems: 100
+            description: The payments (payment).
+            items:
+              type: object
+              additionalProperties: false
+              required:
+              - date
+              - number
+              - total
+              properties:
+                date:
+                  type: string
+                  pattern: ^\d{4}-\d{2}-\d{2}$
+                  description: Payment date. YYYY-MM-DD.
+                number:
+                  type: string
+                  maxLength: 50
+                  description: Payment number.
+                description:
+                  type: string
+                  maxLength: 500
+                  description: Description.
+                total:
+                  type: *id001
+                  description: Amount.
+  outputs:
+  - name: sent
+    value_type: integer
+    schema:
+      type: integer
+      description: How many documents were sent.
+  - name: documents_payments_found_xml
+    value_type: integer
+    schema:
+      type: *id006
+      description: How many Centas WS found.
+  - name: documents_payments_created
+    value_type: integer
+    schema:
+      type: *id006
+      description: How many payments it created.
+  - *id004
+  - name: external_effect_status
+    value_type: text
+    schema:
+      type: string
+  - name: definitely_no_external_effect
+    value_type: boolean
+    schema:
+      type: boolean
+  result_fields:
+  - result.sent
+  - result.documents_payments_found_xml
+  - result.documents_payments_created
+  - result.warnings
+  - result.external_effect_status
+  - result.definitely_no_external_effect
+  error_codes:
+  - invalid_payload
+  - invalid_host_envelope
+  - invalid_connection
+  - unsupported_operation
+  - internal_error
+  - authentication_failed
+  - not_found
+  - conflict
+  - upstream_validation_failed
+  - upstream_failure
+  - invalid_response
+  - response_too_large
+  - timeout
+  - connection_failed
+  - redirect_rejected
+  - blocked_address
+  - timeout_unknown
+- operation_id: delete_sales_documents
+  display_name: Delete sales documents
+  description: Deletes sales documents from Centas WS, each named exactly by type, number and date — at
+    most 50, no wildcards. A deleted document cannot be read back.
+  operation_kind: action
+  category: finance
+  connection_type_ids:
+  - centas
+  workflow_visible: true
+  effect_kind: centas_delete_sales_documents
+  inputs:
+  - *id003
+  - name: documents
+    value_type: array
+    required: true
+    schema:
+      type: array
+      title: Documents
+      description: 'The documents to delete, 1 to 50: type, number, date.'
+      minItems: 1
+      maxItems: 50
+      items:
+        type: object
+        additionalProperties: false
+        required:
+        - type
+        - number
+        - date
+        properties:
+          type: *id007
+          number: *id008
+          date: *id009
+  outputs:
+  - name: sent
+    value_type: integer
+    schema:
+      type: integer
+      description: How many documents were named.
+  - name: documents_found
+    value_type: integer
+    schema:
+      type: *id006
+      description: How many Centas WS found.
+  - name: documents_deleted
+    value_type: integer
+    schema:
+      type: *id006
+      description: How many it deleted.
+  - *id004
+  - name: external_effect_status
+    value_type: text
+    schema:
+      type: string
+  - name: definitely_no_external_effect
+    value_type: boolean
+    schema:
+      type: boolean
+  result_fields:
+  - result.sent
+  - result.documents_found
+  - result.documents_deleted
+  - result.warnings
+  - result.external_effect_status
+  - result.definitely_no_external_effect
+  error_codes:
+  - invalid_payload
+  - invalid_host_envelope
+  - invalid_connection
+  - unsupported_operation
+  - internal_error
+  - authentication_failed
+  - not_found
+  - conflict
+  - upstream_validation_failed
+  - upstream_failure
+  - invalid_response
+  - response_too_large
+  - timeout
+  - connection_failed
+  - redirect_rejected
+  - blocked_address
+  - timeout_unknown
 - operation_id: send_order
   display_name: Send a customer order to Centas
-  description: 'Sends a customer order with its lines to Centas WS and returns its order hash. Centas
-    WS keeps what it receives until an accountant imports it in the Centas program (menu ws.centas.lt),
-    so success means received by Centas WS, not yet booked. Centas WS does not check for repeats: sending
-    the same document again can create it a second time.'
+  description: 'Sends a customer order with its lines and returns its order ID. Centas WS keeps it until
+    the Centas program imports it, so success means Centas WS received it. Centas WS does not check for
+    repeats: sending the same order again can create it a second time.'
   operation_kind: action
   category: finance
   connection_type_ids:
@@ -423,14 +1051,14 @@ operations:
   workflow_visible: true
   effect_kind: centas_send_order
   inputs:
-  - *id002
+  - *id003
   - name: number
     value_type: text
     required: true
     schema:
       type: string
       title: Order number
-      description: The order number (uzsak_num).
+      description: The order number, unique (uzsak_num).
       maxLength: 50
   - name: date
     value_type: text
@@ -449,62 +1077,75 @@ operations:
       title: Customer name
       description: The customer's name (uzsakovas).
       maxLength: 255
-  - name: customer_company_code
+  - name: lines
+    value_type: array
+    required: true
+    schema:
+      type: array
+      title: Lines
+      description: 'The order lines, 1 to 500: code, name, unit, quantity, price without VAT, vat_percent,
+        supplier_code.'
+      minItems: 1
+      maxItems: 500
+      items:
+        type: object
+        additionalProperties: false
+        required:
+        - code
+        - quantity
+        - price
+        - vat_percent
+        properties:
+          code: *id010
+          name: *id011
+          unit: *id012
+          quantity: *id013
+          price: *id014
+          vat_percent: *id015
+          supplier_code:
+            type: string
+            maxLength: 50
+            description: Supplier's code (t_kodas).
+  - name: net_total
+    value_type: text
+    required: false
+    schema: *id016
+  - name: vat_total
+    value_type: text
+    required: false
+    schema: *id017
+  - name: total
+    value_type: text
+    required: false
+    schema:
+      type: *id001
+      title: Total
+      description: The order total with VAT; must be net total + VAT total (uzsak_suma).
+  - name: delivery_date
     value_type: text
     required: false
     schema:
       type: string
-      title: Customer company code
-      description: The customer's company code (im_kodas).
-      maxLength: 50
-  - name: customer_vat_code
+      title: Delivery date
+      description: The delivery date (pristat_data). YYYY-MM-DD.
+      maxLength: 10
+      pattern: ^\d{4}-\d{2}-\d{2}$
+  - name: carrier
     value_type: text
     required: false
     schema:
       type: string
-      title: Customer VAT code
-      description: The customer's VAT code (pvm_kodas).
-      maxLength: 50
-  - name: customer_email
-    value_type: text
-    required: false
-    schema:
-      type: string
-      title: Customer e-mail
-      description: The customer's e-mail (email).
-      maxLength: 255
-  - name: customer_phone
-    value_type: text
-    required: false
-    schema:
-      type: string
-      title: Customer phone
-      description: The customer's phone (tel).
-      maxLength: 50
-  - name: customer_address
-    value_type: text
-    required: false
-    schema:
-      type: string
-      title: Customer address
-      description: The customer's address (adresas).
-      maxLength: 255
-  - name: customer_city
-    value_type: text
-    required: false
-    schema:
-      type: string
-      title: Customer city
-      description: The customer's city (miestas).
+      title: Carrier
+      description: The carrier (vezejas).
       maxLength: 100
-  - name: postal_code
+  - name: comment
     value_type: text
     required: false
     schema:
       type: string
-      title: Postal code
-      description: The postal code (pasto_kodas).
-      maxLength: 20
+      title: Comment
+      description: A comment (komentaras).
+      maxLength: 1000
   - name: customer_note
     value_type: text
     required: false
@@ -513,13 +1154,109 @@ operations:
       title: Customer note
       description: The customer's note (uzsakovas_pastaba).
       maxLength: 1000
+  - name: delivery_branch
+    value_type: text
+    required: false
+    schema:
+      type: string
+      title: Delivery branch
+      description: The delivery branch (uzsak_padalinys).
+      maxLength: 255
+  - name: delivery_branch_gln
+    value_type: text
+    required: false
+    schema:
+      type: string
+      title: Delivery branch GLN
+      description: The delivery branch's GLN code (uzsak_padalinys_gln).
+      maxLength: 20
+  - name: delivery_branch_iln
+    value_type: text
+    required: false
+    schema:
+      type: string
+      title: Delivery branch ILN
+      description: The delivery branch's ILN code (uzsak_padalinys_iln).
+      maxLength: 20
+  - name: customer_iln
+    value_type: text
+    required: false
+    schema:
+      type: string
+      title: Customer ILN
+      description: The customer's ILN code (uzsak_iln).
+      maxLength: 20
+  - name: customer_company_code
+    value_type: text
+    required: false
+    schema:
+      type: string
+      title: Customer company code
+      description: Company registration code (im_kodas).
+      maxLength: 50
+  - name: customer_vat_code
+    value_type: text
+    required: false
+    schema:
+      type: string
+      title: Customer VAT code
+      description: VAT code (pvm_kodas).
+      maxLength: 50
+  - name: customer_country
+    value_type: text
+    required: false
+    schema:
+      type: string
+      title: Customer country
+      description: Country (salis).
+      maxLength: 100
+  - name: customer_city
+    value_type: text
+    required: false
+    schema:
+      type: string
+      title: Customer city
+      description: City (miestas).
+      maxLength: 100
+  - name: customer_address
+    value_type: text
+    required: false
+    schema:
+      type: string
+      title: Customer address
+      description: Address (adresas).
+      maxLength: 255
+  - name: customer_email
+    value_type: text
+    required: false
+    schema:
+      type: string
+      title: Customer e-mail
+      description: E-mail (email).
+      maxLength: 255
+  - name: customer_phone
+    value_type: text
+    required: false
+    schema:
+      type: string
+      title: Customer phone
+      description: Phone (tel).
+      maxLength: 50
+  - name: postal_code
+    value_type: text
+    required: false
+    schema:
+      type: string
+      title: Postal code
+      description: Postal code (pasto_kodas).
+      maxLength: 20
   - name: receivable_account
     value_type: text
     required: false
     schema:
       type: string
       title: Receivable account
-      description: The customer debt account (pirk_skolsask).
+      description: Customer debt account (pirk_skolsask).
       maxLength: 20
   - name: warehouse
     value_type: text
@@ -527,7 +1264,7 @@ operations:
     schema:
       type: string
       title: Warehouse
-      description: The warehouse (sandelis).
+      description: Warehouse (sandelis).
       maxLength: 50
   - name: execution_date
     value_type: text
@@ -536,15 +1273,6 @@ operations:
       type: string
       title: Execution date
       description: When to carry it out (vykd_data). YYYY-MM-DD.
-      maxLength: 10
-      pattern: ^\d{4}-\d{2}-\d{2}$
-  - name: delivery_date
-    value_type: text
-    required: false
-    schema:
-      type: string
-      title: Delivery date
-      description: The delivery date (pristat_data). YYYY-MM-DD.
       maxLength: 10
       pattern: ^\d{4}-\d{2}-\d{2}$
   - name: payment_date
@@ -574,85 +1302,17 @@ operations:
       description: The departure date (isvyk_data). YYYY-MM-DD.
       maxLength: 10
       pattern: ^\d{4}-\d{2}-\d{2}$
-  - name: lines
-    value_type: array
-    required: true
-    schema:
-      type: array
-      title: Lines
-      description: 'The order lines, 1 to 500: code, supplier_code, name, unit, quantity, price without
-        VAT, vat_percent.'
-      minItems: 1
-      maxItems: 500
-      items:
-        type: object
-        additionalProperties: false
-        required:
-        - code
-        - quantity
-        - price
-        - vat_percent
-        properties:
-          code:
-            type: string
-            maxLength: 50
-            description: The product's or service's code (kodas).
-          supplier_code:
-            type: string
-            maxLength: 50
-            description: The supplier's code (t_kodas).
-          name:
-            type: string
-            maxLength: 255
-            description: Its name (pavadinimas).
-          unit:
-            type: string
-            maxLength: 20
-            description: Its unit of measure (matovnt).
-          quantity:
-            type: *id001
-            description: Quantity, greater than zero (kiekis).
-          price:
-            type: *id001
-            description: Unit price without VAT, up to 6 decimals (kaina).
-          vat_percent:
-            type: *id001
-            description: VAT rate in percent, 0 to 100 (pvm_tar and pvmtar).
-  - name: net_total
-    value_type: text
-    required: false
-    schema:
-      type: *id001
-      title: Net total
-      description: 'The order total without VAT (bepvm_suma). Give the net total and the VAT total (and
-        optionally the total) as on the document: they are checked against the lines within one cent per
-        line and sent as given. Leave them empty to have them computed: each line''s net amount rounded
-        to cents, its VAT rounded to cents, summed.'
-  - name: vat_total
-    value_type: text
-    required: false
-    schema:
-      type: *id001
-      title: VAT total
-      description: The order's VAT (pvm_suma).
-  - name: total
-    value_type: text
-    required: false
-    schema:
-      type: *id001
-      title: Total
-      description: The order total with VAT; must be net total + VAT total (uzsak_suma).
   outputs:
-  - name: order_hash
+  - name: order_id
     value_type: text
     schema:
-      type: *id003
-      description: The order hash Centas WS returned.
+      type: *id002
+      description: The order ID Centas WS returned.
+  - *id018
+  - *id019
+  - *id020
+  - *id021
   - *id004
-  - *id005
-  - *id006
-  - *id007
-  - *id008
   - name: external_effect_status
     value_type: text
     schema:
@@ -662,7 +1322,7 @@ operations:
     schema:
       type: boolean
   result_fields:
-  - result.order_hash
+  - result.order_id
   - result.number
   - result.net_total
   - result.vat_total
@@ -688,12 +1348,163 @@ operations:
   - redirect_rejected
   - blocked_address
   - timeout_unknown
+- operation_id: take_new_orders
+  display_name: Take new orders from the Centas WS queue
+  description: 'Reads the orders not yet marked as downloaded. Takes them from the Centas WS queue: Centas
+    WS marks what it hands out, so the Centas program will no longer see these records as new. The answer
+    is also saved whole as a workflow file.'
+  operation_kind: action
+  category: finance
+  connection_type_ids:
+  - centas
+  workflow_visible: true
+  effect_kind: centas_take_new_orders
+  inputs:
+  - *id003
+  outputs:
+  - name: items
+    value_type: array
+    schema:
+      type: array
+      items:
+        type: object
+        additionalProperties: true
+        description: 'An order: uzsak_num, uzsak_data, uzsakovas, uzsak_suma, pvm_suma, bepvm_suma, eilute
+          (rows).'
+        properties:
+          uzsak_num:
+            description: Order number.
+          uzsak_data:
+            description: Order date.
+          uzsakovas:
+            description: Customer.
+          uzsak_suma:
+            description: Total.
+          pvm_suma:
+            description: VAT.
+          bepvm_suma:
+            description: Net total.
+          eilute:
+            type: array
+            description: 'Rows: kodas, pavadinimas, matovnt, kiekis, kaina, pvmtar.'
+      description: The records taken (empty when they do not fit the step output; then they are all in
+        the file).
+  - name: count
+    value_type: integer
+    schema:
+      type: integer
+      description: How many records were taken.
+  - name: file
+    value_type: artifact_handle
+    schema:
+      type: *id002
+      description: Centas WS's answer, whole, as an XML workflow file.
+  - *id004
+  - name: external_effect_status
+    value_type: text
+    schema:
+      type: string
+  - name: definitely_no_external_effect
+    value_type: boolean
+    schema:
+      type: boolean
+  result_fields:
+  - result.items
+  - result.count
+  - result.file
+  - result.warnings
+  - result.external_effect_status
+  - result.definitely_no_external_effect
+  error_codes:
+  - invalid_payload
+  - invalid_host_envelope
+  - invalid_connection
+  - unsupported_operation
+  - internal_error
+  - authentication_failed
+  - not_found
+  - conflict
+  - upstream_validation_failed
+  - upstream_failure
+  - invalid_response
+  - response_too_large
+  - timeout
+  - connection_failed
+  - redirect_rejected
+  - blocked_address
+  - timeout_unknown
+  - artifact_output_unavailable
+- operation_id: get_order_invoice_pdf
+  display_name: Get the invoice PDF of an order
+  description: Saves the PDF of the invoice issued for an order as a workflow file, or only checks whether
+    there is one.
+  operation_kind: source
+  category: finance
+  connection_type_ids:
+  - centas
+  workflow_visible: true
+  inputs:
+  - *id003
+  - name: order_number
+    value_type: text
+    required: true
+    schema:
+      type: string
+      title: Order number
+      description: The order number.
+      maxLength: 50
+  - name: check_only
+    value_type: boolean
+    required: false
+    schema:
+      type: boolean
+      title: Check only
+      description: Only check whether the PDF exists.
+  outputs:
+  - name: exists
+    value_type: boolean
+    schema:
+      type: boolean
+      description: True when the order has an invoice PDF.
+  - name: file
+    value_type: artifact_handle
+    schema:
+      type: *id002
+      description: The PDF, as a workflow file.
+  - name: size_bytes
+    value_type: integer
+    schema:
+      type: *id006
+      description: The PDF's size.
+  - *id004
+  result_fields:
+  - result.exists
+  - result.file
+  - result.size_bytes
+  - result.warnings
+  error_codes:
+  - invalid_payload
+  - invalid_host_envelope
+  - invalid_connection
+  - unsupported_operation
+  - internal_error
+  - authentication_failed
+  - not_found
+  - conflict
+  - upstream_validation_failed
+  - upstream_failure
+  - invalid_response
+  - response_too_large
+  - timeout
+  - connection_failed
+  - redirect_rejected
+  - blocked_address
+  - artifact_output_unavailable
 - operation_id: send_purchase_invoice
   display_name: Send a purchase invoice to Centas
-  description: 'Sends a supplier''s invoice with its lines to Centas WS and returns its purchase ID. Centas
-    WS keeps what it receives until an accountant imports it in the Centas program (menu ws.centas.lt),
-    so success means received by Centas WS, not yet booked. Centas WS does not check for repeats: sending
-    the same document again can create it a second time.'
+  description: 'Sends a supplier''s invoice with its lines and returns its purchase ID. Centas WS keeps
+    it until the Centas program imports it, so success means Centas WS received it. Centas WS does not
+    check for repeats: sending the same invoice again can create it a second time.'
   operation_kind: action
   category: finance
   connection_type_ids:
@@ -701,14 +1512,14 @@ operations:
   workflow_visible: true
   effect_kind: centas_send_purchase_invoice
   inputs:
-  - *id002
+  - *id003
   - name: seller_name
     value_type: text
     required: true
     schema:
       type: string
       title: Seller name
-      description: The seller's name (kontrah).
+      description: The supplier's name (kontrah).
       maxLength: 255
   - name: number
     value_type: text
@@ -733,8 +1544,7 @@ operations:
     schema:
       type: array
       title: Lines
-      description: 'The invoice lines, 1 to 500: code, name, unit, quantity, price without VAT, vat_percent,
-        vat_code, project.'
+      description: 'The invoice lines, 1 to 500: code, name, unit, quantity, price without VAT, vat_percent.'
       minItems: 1
       maxItems: 500
       items:
@@ -746,37 +1556,35 @@ operations:
         - price
         - vat_percent
         properties:
-          code: *id009
-          name: *id010
-          unit: *id011
-          quantity: *id012
-          price: *id013
-          vat_percent: *id014
-          vat_code: *id015
-          project: *id016
+          code: *id010
+          name: *id011
+          unit: *id012
+          quantity: *id013
+          price: *id014
+          vat_percent: *id015
   - name: net_total
     value_type: text
     required: false
-    schema: *id017
+    schema: *id016
   - name: vat_total
     value_type: text
     required: false
-    schema: *id018
+    schema: *id017
   - name: total
     value_type: text
     required: false
-    schema: *id019
+    schema: *id022
   outputs:
   - name: purchase_id
     value_type: text
     schema:
-      type: *id003
+      type: *id002
       description: The purchase ID Centas WS returned.
+  - *id018
+  - *id019
+  - *id020
+  - *id021
   - *id004
-  - *id005
-  - *id006
-  - *id007
-  - *id008
   - name: external_effect_status
     value_type: text
     schema:
@@ -812,104 +1620,253 @@ operations:
   - redirect_rejected
   - blocked_address
   - timeout_unknown
-- operation_id: send_payments
-  display_name: Send bank payments to Centas
-  description: 'Sends bank payments to Centas WS in one batch and returns how many it created. Each payment
-    needs its own reference (RefNr). Before sending, the step reads Centas WS''s payment export: when
-    it already lists one of the references, or cannot be read, the step stops and sends nothing. Centas
-    WS keeps what it receives until an accountant imports it in the Centas program (menu ws.centas.lt),
-    so success means received by Centas WS, not yet booked. Centas WS does not check for repeats: sending
-    the same document again can create it a second time.'
+- operation_id: send_invoice_to_company
+  display_name: Send an invoice to another company's Centas
+  description: 'Sends your sales invoice to the receiving company''s Centas WS as their purchase, with
+    its lines and optionally its PDF. With Send e-mail on, Centas WS also e-mails the receiver. Centas
+    WS does not check for repeats: sending the same invoice again can create it a second time.'
   operation_kind: action
   category: finance
   connection_type_ids:
   - centas
   workflow_visible: true
-  effect_kind: centas_send_payments
+  effect_kind: centas_send_invoice_to_company
   inputs:
-  - *id002
-  - name: payments
+  - *id003
+  - name: receiver_company_code
+    value_type: text
+    required: false
+    schema:
+      type: string
+      title: Receiver company code
+      description: The receiver's company code (gavejas im_kodas).
+      maxLength: 50
+  - name: receiver_vat_code
+    value_type: text
+    required: false
+    schema:
+      type: string
+      title: Receiver VAT code
+      description: The receiver's VAT code (gavejas pvm_kodas).
+      maxLength: 50
+  - name: receiver_name
+    value_type: text
+    required: false
+    schema:
+      type: string
+      title: Receiver name
+      description: The receiver's name (gavejas kontrah).
+      maxLength: 255
+  - name: receiver_email
+    value_type: text
+    required: false
+    schema:
+      type: string
+      title: Receiver e-mail
+      description: The receiver's e-mail (email).
+      maxLength: 255
+  - name: receiver_country
+    value_type: text
+    required: false
+    schema:
+      type: string
+      title: Receiver country
+      description: Country (salis).
+      maxLength: 100
+  - name: receiver_city
+    value_type: text
+    required: false
+    schema:
+      type: string
+      title: Receiver city
+      description: City (miestas).
+      maxLength: 100
+  - name: receiver_address
+    value_type: text
+    required: false
+    schema:
+      type: string
+      title: Receiver address
+      description: Address (adresas).
+      maxLength: 255
+  - name: receiver_telema_id
+    value_type: text
+    required: false
+    schema:
+      type: string
+      title: Receiver Telema ID
+      description: Telema ID (telema_id).
+      maxLength: 50
+  - name: receiver_edisoft_iln
+    value_type: text
+    required: false
+    schema:
+      type: string
+      title: Receiver Edisoft ILN
+      description: Edisoft ILN (edisoft_iln).
+      maxLength: 50
+  - name: send_email
+    value_type: boolean
+    required: false
+    schema:
+      type: boolean
+      title: Send e-mail
+      description: Have Centas WS e-mail the receiver about the invoice (send_email). Off unless chosen.
+  - name: number
+    value_type: text
+    required: true
+    schema:
+      type: string
+      title: Invoice number
+      description: The invoice number (dok_num).
+      maxLength: 50
+  - name: date
+    value_type: text
+    required: true
+    schema:
+      type: string
+      title: Date
+      description: The invoice date (data). YYYY-MM-DD.
+      maxLength: 10
+      pattern: ^\d{4}-\d{2}-\d{2}$
+  - name: due_date
+    value_type: text
+    required: false
+    schema:
+      type: string
+      title: Due date
+      description: The payment due date (apmok_iki). YYYY-MM-DD.
+      maxLength: 10
+      pattern: ^\d{4}-\d{2}-\d{2}$
+  - name: seller_name
+    value_type: text
+    required: false
+    schema:
+      type: string
+      title: Seller name
+      description: Your company's name (dokumentas kontrah).
+      maxLength: 255
+  - name: document_type
+    value_type: text
+    required: false
+    schema:
+      type: string
+      title: Document type
+      description: The document type, for example deb (DocType).
+      maxLength: 20
+  - name: country_code
+    value_type: text
+    required: false
+    schema:
+      type: string
+      title: Country code
+      description: Country code, for example LT (salis_kodas).
+      maxLength: 2
+  - name: paid
+    value_type: boolean
+    required: false
+    schema:
+      type: boolean
+      title: Paid
+      description: Already paid (apmoketa).
+  - name: remaining_debt
+    value_type: text
+    required: false
+    schema:
+      type: *id001
+      title: Remaining debt
+      description: Remaining unpaid amount (dok_skola).
+  - name: pdf_file
+    value_type: artifact_handle
+    required: false
+    schema:
+      title: PDF
+      description: The invoice PDF from an earlier step, up to 8 MB (pdf_base64).
+  - name: pdf_name
+    value_type: text
+    required: false
+    schema:
+      type: string
+      title: PDF name
+      description: 'The PDF''s file name (pdf_name). Default: the invoice number.'
+      maxLength: 100
+  - name: lines
     value_type: array
     required: true
     schema:
       type: array
-      title: Payments
-      description: 'The payments, 1 to 500: type (for example BankDeb), date, amount, document_number,
-        reference, details, payer_name, payer_code, account.'
+      title: Lines
+      description: 'The invoice lines, 1 to 500: code, name, unit, quantity, price without VAT, vat_percent;
+        optionally kind, ean, vat_code.'
       minItems: 1
       maxItems: 500
       items:
         type: object
         additionalProperties: false
         required:
-        - type
-        - date
-        - amount
-        - reference
+        - code
+        - quantity
+        - price
+        - vat_percent
         properties:
-          type:
+          code: *id010
+          name: *id011
+          unit: *id012
+          quantity: *id013
+          price: *id014
+          vat_percent: *id015
+          kind:
             type: string
-            maxLength: 30
-            description: Payment type code, for example BankDeb (PaymentType).
-          date:
+            maxLength: 5
+            description: Product or service mark, for example P (prek_pasl).
+          ean:
             type: string
-            pattern: ^\d{4}-\d{2}-\d{2}$
-            description: Date, YYYY-MM-DD (Date).
-          amount:
-            type: *id001
-            description: Amount, greater than zero, 2 decimals (Amount).
-          document_number:
+            maxLength: 20
+            description: EAN barcode (ean).
+          vat_code:
             type: string
-            maxLength: 50
-            description: Document number (DocNr).
-          reference:
-            type: string
-            maxLength: 100
-            description: Unique reference of the payment (RefNr).
-          details:
-            type: string
-            maxLength: 500
-            description: Payment details (Details).
-          payer_name:
-            type: string
-            maxLength: 255
-            description: Payer or payee name (RecName).
-          payer_code:
-            type: string
-            maxLength: 50
-            description: Payer or payee code (RecId).
-          account:
-            type: string
-            maxLength: 50
-            description: Account number (ToAccountNumber).
+            maxLength: 20
+            description: VAT classifier code, for example PVM1 (mok_kodas).
+  - name: net_total
+    value_type: text
+    required: false
+    schema: *id016
+  - name: vat_total
+    value_type: text
+    required: false
+    schema: *id017
+  - name: total
+    value_type: text
+    required: false
+    schema: *id022
   outputs:
-  - name: sent
+  - *id018
+  - *id019
+  - *id020
+  - *id021
+  - name: email_requested
+    value_type: boolean
+    schema:
+      type: boolean
+      description: Whether an e-mail was asked for.
+  - name: purchase_rows_created
     value_type: integer
     schema:
-      type: integer
-      description: How many payments were sent.
-  - name: found
+      type: *id006
+      description: Purchase rows created.
+  - name: document_rows_created
     value_type: integer
+    schema:
+      type: *id006
+      description: Document rows created.
+  - name: email_sent
+    value_type: boolean
     schema:
       type:
-      - integer
+      - boolean
       - 'null'
-      description: How many Centas WS found in them.
-  - name: created
-    value_type: integer
-    schema:
-      type:
-      - integer
-      - 'null'
-      description: How many Centas WS created.
-  - name: references
-    value_type: array
-    schema:
-      type: array
-      items:
-        type: string
-      description: The references sent, in order.
-  - *id008
+      description: Whether Centas WS sent the e-mail.
+  - *id004
   - name: external_effect_status
     value_type: text
     schema:
@@ -919,10 +1876,14 @@ operations:
     schema:
       type: boolean
   result_fields:
-  - result.sent
-  - result.found
-  - result.created
-  - result.references
+  - result.number
+  - result.net_total
+  - result.vat_total
+  - result.total
+  - result.email_requested
+  - result.purchase_rows_created
+  - result.document_rows_created
+  - result.email_sent
   - result.warnings
   - result.external_effect_status
   - result.definitely_no_external_effect
@@ -944,43 +1905,36 @@ operations:
   - redirect_rejected
   - blocked_address
   - timeout_unknown
-- operation_id: get_payments
-  display_name: Get payments
-  description: Reads the payments in Centas WS's payment export, optionally only a date range or one reference,
-    one page at a time. The export is read whole and filtered here.
+  - artifact_input_unavailable
+- operation_id: get_purchases
+  display_name: Get purchases for a date range
+  description: Reads the purchases of a date range with their rows. With a date range Centas WS leaves
+    its downloaded mark unchanged, so nothing is taken from the queue.
   operation_kind: source
   category: finance
   connection_type_ids:
   - centas
   workflow_visible: true
   inputs:
-  - *id002
+  - *id003
   - name: date_from
     value_type: text
-    required: false
+    required: true
     schema:
       type: string
       title: From date
-      description: Only payments on or after this date. YYYY-MM-DD.
+      description: The first day. YYYY-MM-DD.
       maxLength: 10
       pattern: ^\d{4}-\d{2}-\d{2}$
   - name: date_to
     value_type: text
-    required: false
+    required: true
     schema:
       type: string
       title: To date
-      description: Only payments on or before this date. YYYY-MM-DD.
+      description: The last day. YYYY-MM-DD.
       maxLength: 10
       pattern: ^\d{4}-\d{2}-\d{2}$
-  - name: reference
-    value_type: text
-    required: false
-    schema:
-      type: string
-      title: Reference
-      description: Only the payment with this reference.
-      maxLength: 100
   - name: page
     value_type: integer
     required: false
@@ -1004,48 +1958,30 @@ operations:
     value_type: array
     schema:
       type: array
-      items:
+      items: &id023
         type: object
-        additionalProperties: false
-        required:
-        - type
-        - date
-        - amount
-        - document_number
-        - reference
-        - details
-        - payer_name
-        - payer_code
-        - account
+        additionalProperties: true
+        description: 'A purchase: dok_num, data, apmok_iki, kontrah, dok_suma, pvm_suma, bepvm_suma, eilute
+          (rows).'
         properties:
-          type:
-            type: *id003
-            description: Payment type, for example BankDeb.
-          date:
-            type: *id003
-            description: Date, YYYY-MM-DD (as sent when it is not a date).
-          amount:
-            type: *id003
-            description: Amount.
-          document_number:
-            type: *id003
-            description: Document number.
-          reference:
-            type: *id003
-            description: Unique reference.
-          details:
-            type: *id003
-            description: Payment details.
-          payer_name:
-            type: *id003
-            description: Payer or payee name.
-          payer_code:
-            type: *id003
-            description: Payer or payee code.
-          account:
-            type: *id003
-            description: Account number.
-      description: The payments of this page.
+          dok_num:
+            description: Number.
+          data:
+            description: Date.
+          apmok_iki:
+            description: Due date.
+          kontrah:
+            description: Supplier.
+          dok_suma:
+            description: Total.
+          pvm_suma:
+            description: VAT.
+          bepvm_suma:
+            description: Net total.
+          eilute:
+            type: array
+            description: 'Rows: kodas, prek_pasl, pavadinimas, matovnt, kiekis, kaina, pvmtar, mok_kodas.'
+      description: The purchases of this page.
   - name: count
     value_type: integer
     schema:
@@ -1055,7 +1991,7 @@ operations:
     value_type: integer
     schema:
       type: integer
-      description: How many rows match in all.
+      description: How many rows Centas WS returned in all.
   - name: page
     value_type: integer
     schema:
@@ -1069,11 +2005,9 @@ operations:
   - name: next_page
     value_type: integer
     schema:
-      type:
-      - integer
-      - 'null'
+      type: *id006
       description: The page to read next, or null.
-  - *id008
+  - *id004
   result_fields:
   - result.items
   - result.count
@@ -1099,11 +2033,776 @@ operations:
   - connection_failed
   - redirect_rejected
   - blocked_address
+- operation_id: take_new_purchases
+  display_name: Take new purchases from the Centas WS queue
+  description: 'Reads the purchases not yet downloaded. Takes them from the Centas WS queue: Centas WS
+    marks what it hands out, so the Centas program will no longer see these records as new. The answer
+    is also saved whole as a workflow file.'
+  operation_kind: action
+  category: finance
+  connection_type_ids:
+  - centas
+  workflow_visible: true
+  effect_kind: centas_take_new_purchases
+  inputs:
+  - *id003
+  outputs:
+  - name: items
+    value_type: array
+    schema:
+      type: array
+      items: *id023
+      description: The records taken (empty when they do not fit the step output; then they are all in
+        the file).
+  - name: count
+    value_type: integer
+    schema:
+      type: integer
+      description: How many records were taken.
+  - name: file
+    value_type: artifact_handle
+    schema:
+      type: *id002
+      description: Centas WS's answer, whole, as an XML workflow file.
+  - *id004
+  - name: external_effect_status
+    value_type: text
+    schema:
+      type: string
+  - name: definitely_no_external_effect
+    value_type: boolean
+    schema:
+      type: boolean
+  result_fields:
+  - result.items
+  - result.count
+  - result.file
+  - result.warnings
+  - result.external_effect_status
+  - result.definitely_no_external_effect
+  error_codes:
+  - invalid_payload
+  - invalid_host_envelope
+  - invalid_connection
+  - unsupported_operation
+  - internal_error
+  - authentication_failed
+  - not_found
+  - conflict
+  - upstream_validation_failed
+  - upstream_failure
+  - invalid_response
+  - response_too_large
+  - timeout
+  - connection_failed
+  - redirect_rejected
+  - blocked_address
+  - timeout_unknown
+  - artifact_output_unavailable
+- operation_id: send_payments
+  display_name: Send bank and cash payments to Centas
+  description: 'Sends payments in one batch and returns how many Centas WS created. Centas WS keeps it
+    until the Centas program imports it, so success means Centas WS received it. Centas WS does not check
+    for repeats: sending the same payment again can create it a second time.'
+  operation_kind: action
+  category: finance
+  connection_type_ids:
+  - centas
+  workflow_visible: true
+  effect_kind: centas_send_payments
+  inputs:
+  - *id003
+  - name: payments
+    value_type: array
+    required: true
+    schema:
+      type: array
+      title: Payments
+      description: 'The payments, 1 to 500: type (BankDeb, CashDeb, BankCred, CashDeb2), date, amount,
+        document_number, details, payer_name; optionally reference, payer_code, receiver, account.'
+      minItems: 1
+      maxItems: 500
+      items:
+        type: object
+        additionalProperties: false
+        required:
+        - type
+        - date
+        - amount
+        - document_number
+        - details
+        - payer_name
+        properties:
+          type:
+            type: string
+            enum:
+            - BankDeb
+            - CashDeb
+            - BankCred
+            - CashDeb2
+            description: Payment type (PaymentType).
+          date:
+            type: string
+            pattern: ^\d{4}-\d{2}-\d{2}$
+            description: Date (Date). YYYY-MM-DD.
+          amount:
+            type: *id001
+            description: Amount, greater than zero, 2 decimals (Amount).
+          document_number:
+            type: string
+            maxLength: 50
+            description: Document number (DocNr).
+          details:
+            type: string
+            maxLength: 500
+            description: Details (Details).
+          payer_name:
+            type: string
+            maxLength: 255
+            description: Payer or payee name (RecName).
+          reference:
+            type: string
+            maxLength: 100
+            description: Reference, unique in the batch (RefNr).
+          payer_code:
+            type: string
+            maxLength: 50
+            description: Payer or payee code (RecId).
+          receiver:
+            type: string
+            maxLength: 255
+            description: Receiver (Receiver).
+          account:
+            type: string
+            maxLength: 50
+            description: Account number (ToAccountNumber).
+  outputs:
+  - name: sent
+    value_type: integer
+    schema:
+      type: integer
+      description: How many payments were sent.
+  - name: payments_found_xml
+    value_type: integer
+    schema:
+      type: *id006
+      description: How many Centas WS found.
+  - name: payments_created
+    value_type: integer
+    schema:
+      type: *id006
+      description: How many it created.
+  - *id004
+  - name: external_effect_status
+    value_type: text
+    schema:
+      type: string
+  - name: definitely_no_external_effect
+    value_type: boolean
+    schema:
+      type: boolean
+  result_fields:
+  - result.sent
+  - result.payments_found_xml
+  - result.payments_created
+  - result.warnings
+  - result.external_effect_status
+  - result.definitely_no_external_effect
+  error_codes:
+  - invalid_payload
+  - invalid_host_envelope
+  - invalid_connection
+  - unsupported_operation
+  - internal_error
+  - authentication_failed
+  - not_found
+  - conflict
+  - upstream_validation_failed
+  - upstream_failure
+  - invalid_response
+  - response_too_large
+  - timeout
+  - connection_failed
+  - redirect_rejected
+  - blocked_address
+  - timeout_unknown
+- operation_id: take_new_payments
+  display_name: Take new payments from the Centas WS queue
+  description: 'Reads the payments not yet exported, all or of one type. Takes them from the Centas WS
+    queue: Centas WS marks what it hands out, so the Centas program will no longer see these records as
+    new. The answer is also saved whole as a workflow file.'
+  operation_kind: action
+  category: finance
+  connection_type_ids:
+  - centas
+  workflow_visible: true
+  effect_kind: centas_take_new_payments
+  inputs:
+  - *id003
+  - name: payment_type
+    value_type: text
+    required: false
+    schema:
+      type: string
+      enum:
+      - BankDeb
+      - CashDeb
+      - BankCred
+      - CashDeb2
+      title: Payment type
+      description: Only payments of this type.
+  outputs:
+  - name: items
+    value_type: array
+    schema:
+      type: array
+      items:
+        type: object
+        additionalProperties: true
+        description: 'A payment: PaymentType, Date, Amount, DocNr, RefNr, Details, RecName, RecId, Receiver,
+          ToAccountNumber.'
+        properties:
+          PaymentType:
+            description: Payment type.
+          Date:
+            description: Date.
+          Amount:
+            description: Amount.
+          DocNr:
+            description: Document number.
+          RefNr:
+            description: Reference.
+          Details:
+            description: Details.
+          RecName:
+            description: Payer or payee name.
+          RecId:
+            description: Payer or payee code.
+          Receiver:
+            description: Receiver.
+          ToAccountNumber:
+            description: Account number.
+      description: The records taken (empty when they do not fit the step output; then they are all in
+        the file).
+  - name: count
+    value_type: integer
+    schema:
+      type: integer
+      description: How many records were taken.
+  - name: file
+    value_type: artifact_handle
+    schema:
+      type: *id002
+      description: Centas WS's answer, whole, as an XML workflow file.
+  - *id004
+  - name: external_effect_status
+    value_type: text
+    schema:
+      type: string
+  - name: definitely_no_external_effect
+    value_type: boolean
+    schema:
+      type: boolean
+  result_fields:
+  - result.items
+  - result.count
+  - result.file
+  - result.warnings
+  - result.external_effect_status
+  - result.definitely_no_external_effect
+  error_codes:
+  - invalid_payload
+  - invalid_host_envelope
+  - invalid_connection
+  - unsupported_operation
+  - internal_error
+  - authentication_failed
+  - not_found
+  - conflict
+  - upstream_validation_failed
+  - upstream_failure
+  - invalid_response
+  - response_too_large
+  - timeout
+  - connection_failed
+  - redirect_rejected
+  - blocked_address
+  - timeout_unknown
+  - artifact_output_unavailable
+- operation_id: get_products
+  display_name: Get products
+  description: Reads every product with all its fields, one page at a time. The data is what the Centas
+    program uploaded to Centas WS.
+  operation_kind: source
+  category: finance
+  connection_type_ids:
+  - centas
+  workflow_visible: true
+  inputs:
+  - *id003
+  - name: page
+    value_type: integer
+    required: false
+    schema:
+      type: integer
+      minimum: 1
+      maximum: 1000000
+      title: Page
+      description: The page to read, from 1; pass next_page to continue.
+  - name: limit
+    value_type: integer
+    required: false
+    schema:
+      type: integer
+      minimum: 1
+      maximum: 500
+      title: Rows
+      description: Rows per page, 1 to 500. Default 100.
+  outputs:
+  - name: items
+    value_type: array
+    schema:
+      type: array
+      items:
+        type: object
+        additionalProperties: true
+        description: 'A product: kodas, kaina, savikaina, likutis, pavadinimas, grupe1-4, gamintojas,
+          svoris_neto, svoris_bruto, AnalogProducts, RecommendedProducts, Nuotrauka, aprasymas, barkodas,
+          uzsak, sandel, stocks, parameters.'
+        properties: &id024
+          kodas:
+            description: Product code.
+          kaina:
+            description: Price.
+          savikaina:
+            description: Cost price.
+          likutis:
+            description: Stock balance.
+          pavadinimas:
+            description: Name.
+          grupe1:
+            description: Group 1.
+          grupe2:
+            description: Group 2.
+          grupe3:
+            description: Group 3.
+          grupe4:
+            description: Group 4.
+          gamintojas:
+            description: Manufacturer.
+          svoris_neto:
+            description: Net weight.
+          svoris_bruto:
+            description: Gross weight.
+          AnalogProducts:
+            description: Analog product codes.
+          RecommendedProducts:
+            description: Recommended product codes.
+          Nuotrauka:
+            description: Photo URL.
+          aprasymas:
+            description: Description.
+          barkodas:
+            description: Barcode.
+          uzsak:
+            description: Ordered quantity.
+          sandel:
+            description: Warehouse.
+          stocks:
+            description: Stock by warehouse.
+          parameters:
+            description: Product parameters.
+      description: The products of this page.
+  - name: count
+    value_type: integer
+    schema:
+      type: integer
+      description: How many rows this page holds.
+  - name: total
+    value_type: integer
+    schema:
+      type: integer
+      description: How many rows Centas WS returned in all.
+  - name: page
+    value_type: integer
+    schema:
+      type: integer
+      description: This page's number.
+  - name: has_more
+    value_type: boolean
+    schema:
+      type: boolean
+      description: True when more rows follow.
+  - name: next_page
+    value_type: integer
+    schema:
+      type: *id006
+      description: The page to read next, or null.
+  - *id004
+  result_fields:
+  - result.items
+  - result.count
+  - result.total
+  - result.page
+  - result.has_more
+  - result.next_page
+  - result.warnings
+  error_codes:
+  - invalid_payload
+  - invalid_host_envelope
+  - invalid_connection
+  - unsupported_operation
+  - internal_error
+  - authentication_failed
+  - not_found
+  - conflict
+  - upstream_validation_failed
+  - upstream_failure
+  - invalid_response
+  - response_too_large
+  - timeout
+  - connection_failed
+  - redirect_rejected
+  - blocked_address
+- operation_id: get_product
+  display_name: Get a product by code
+  description: Reads one product with all its fields. The data is what the Centas program uploaded to
+    Centas WS.
+  operation_kind: source
+  category: finance
+  connection_type_ids:
+  - centas
+  workflow_visible: true
+  inputs:
+  - *id003
+  - name: code
+    value_type: text
+    required: true
+    schema:
+      type: string
+      title: Product code
+      description: The product code (kodas).
+      maxLength: 50
+  outputs:
+  - name: found
+    value_type: boolean
+    schema:
+      type: boolean
+      description: True when the product exists.
+  - name: product
+    value_type: object
+    schema:
+      type:
+      - object
+      - 'null'
+      additionalProperties: true
+      description: 'A product: kodas, kaina, savikaina, likutis, pavadinimas, grupe1-4, gamintojas, svoris_neto,
+        svoris_bruto, AnalogProducts, RecommendedProducts, Nuotrauka, aprasymas, barkodas, uzsak, sandel,
+        stocks, parameters.'
+      properties: *id024
+  - *id004
+  result_fields:
+  - result.found
+  - result.product
+  - result.warnings
+  error_codes:
+  - invalid_payload
+  - invalid_host_envelope
+  - invalid_connection
+  - unsupported_operation
+  - internal_error
+  - authentication_failed
+  - not_found
+  - conflict
+  - upstream_validation_failed
+  - upstream_failure
+  - invalid_response
+  - response_too_large
+  - timeout
+  - connection_failed
+  - redirect_rejected
+  - blocked_address
+- operation_id: get_product_stock
+  display_name: Get product prices and stock
+  description: Reads products' price, cost, stock and stock by warehouse, optionally of one barcode. The
+    data is what the Centas program uploaded to Centas WS.
+  operation_kind: source
+  category: finance
+  connection_type_ids:
+  - centas
+  workflow_visible: true
+  inputs:
+  - *id003
+  - name: barcode
+    value_type: text
+    required: false
+    schema:
+      type: string
+      title: Barcode
+      description: Only the product with this barcode (barkodas).
+      maxLength: 50
+  - name: page
+    value_type: integer
+    required: false
+    schema:
+      type: integer
+      minimum: 1
+      maximum: 1000000
+      title: Page
+      description: The page to read, from 1; pass next_page to continue.
+  - name: limit
+    value_type: integer
+    required: false
+    schema:
+      type: integer
+      minimum: 1
+      maximum: 500
+      title: Rows
+      description: Rows per page, 1 to 500. Default 100.
+  outputs:
+  - name: items
+    value_type: array
+    schema:
+      type: array
+      items:
+        type: object
+        additionalProperties: true
+        description: 'A product: kodas, kaina, savikaina, likutis, stocks.'
+        properties:
+          kodas:
+            description: Product code.
+          kaina:
+            description: Price.
+          savikaina:
+            description: Cost price.
+          likutis:
+            description: Stock balance.
+          stocks:
+            description: Stock by warehouse.
+      description: The products of this page.
+  - name: count
+    value_type: integer
+    schema:
+      type: integer
+      description: How many rows this page holds.
+  - name: total
+    value_type: integer
+    schema:
+      type: integer
+      description: How many rows Centas WS returned in all.
+  - name: page
+    value_type: integer
+    schema:
+      type: integer
+      description: This page's number.
+  - name: has_more
+    value_type: boolean
+    schema:
+      type: boolean
+      description: True when more rows follow.
+  - name: next_page
+    value_type: integer
+    schema:
+      type: *id006
+      description: The page to read next, or null.
+  - *id004
+  result_fields:
+  - result.items
+  - result.count
+  - result.total
+  - result.page
+  - result.has_more
+  - result.next_page
+  - result.warnings
+  error_codes:
+  - invalid_payload
+  - invalid_host_envelope
+  - invalid_connection
+  - unsupported_operation
+  - internal_error
+  - authentication_failed
+  - not_found
+  - conflict
+  - upstream_validation_failed
+  - upstream_failure
+  - invalid_response
+  - response_too_large
+  - timeout
+  - connection_failed
+  - redirect_rejected
+  - blocked_address
+- operation_id: get_product_cards
+  display_name: Get product cards with units and VAT rates
+  description: Reads product cards with unit, VAT rate, stock by warehouse and parameters; or one card
+    by its ID. The data is what the Centas program uploaded to Centas WS.
+  operation_kind: source
+  category: finance
+  connection_type_ids:
+  - centas
+  workflow_visible: true
+  inputs:
+  - *id003
+  - name: id
+    value_type: integer
+    required: false
+    schema:
+      type: integer
+      minimum: 1
+      maximum: 2147483647
+      title: Product ID
+      description: Only this product (its ID in Centas WS).
+  - name: page
+    value_type: integer
+    required: false
+    schema:
+      type: integer
+      minimum: 1
+      maximum: 1000000
+      title: Page
+      description: The page to read, from 1; pass next_page to continue.
+  - name: limit
+    value_type: integer
+    required: false
+    schema:
+      type: integer
+      minimum: 1
+      maximum: 500
+      title: Rows
+      description: Rows per page, 1 to 500. Default 100.
+  outputs:
+  - name: items
+    value_type: array
+    schema:
+      type: array
+      items:
+        type: object
+        additionalProperties: true
+        description: 'A product card: id, kodas, pavadinimas, matovnt, kaina, pvmtar, likutis, Stocks,
+          ProductParameters and any other field Centas WS sends.'
+        properties:
+          id:
+            description: Product ID.
+          kodas:
+            description: Product code.
+          pavadinimas:
+            description: Name.
+          matovnt:
+            description: Unit of measure.
+          kaina:
+            description: Price.
+          pvmtar:
+            description: VAT rate.
+          likutis:
+            description: Stock balance.
+          Stocks:
+            type: array
+            description: 'Stock by warehouse: WarehouseId, WarehouseName, Quantity.'
+          ProductParameters:
+            type: array
+            description: 'Parameters: Name, Value.'
+      description: The product cards of this page.
+  - name: count
+    value_type: integer
+    schema:
+      type: integer
+      description: How many rows this page holds.
+  - name: total
+    value_type: integer
+    schema:
+      type: integer
+      description: How many rows Centas WS returned in all.
+  - name: page
+    value_type: integer
+    schema:
+      type: integer
+      description: This page's number.
+  - name: has_more
+    value_type: boolean
+    schema:
+      type: boolean
+      description: True when more rows follow.
+  - name: next_page
+    value_type: integer
+    schema:
+      type: *id006
+      description: The page to read next, or null.
+  - *id004
+  result_fields:
+  - result.items
+  - result.count
+  - result.total
+  - result.page
+  - result.has_more
+  - result.next_page
+  - result.warnings
+  error_codes:
+  - invalid_payload
+  - invalid_host_envelope
+  - invalid_connection
+  - unsupported_operation
+  - internal_error
+  - authentication_failed
+  - not_found
+  - conflict
+  - upstream_validation_failed
+  - upstream_failure
+  - invalid_response
+  - response_too_large
+  - timeout
+  - connection_failed
+  - redirect_rejected
+  - blocked_address
+- operation_id: get_product_gallery_link
+  display_name: Get a product's gallery link
+  description: Returns the link to a product's image gallery.
+  operation_kind: source
+  category: finance
+  connection_type_ids:
+  - centas
+  workflow_visible: true
+  inputs:
+  - *id003
+  - name: product_id
+    value_type: integer
+    required: true
+    schema:
+      type: integer
+      minimum: 1
+      maximum: 2147483647
+      title: Product ID
+      description: The product's ID in Centas WS.
+  outputs:
+  - name: link
+    value_type: text
+    schema:
+      type: *id002
+      description: The gallery's address.
+  - *id004
+  result_fields:
+  - result.link
+  - result.warnings
+  error_codes:
+  - invalid_payload
+  - invalid_host_envelope
+  - invalid_connection
+  - unsupported_operation
+  - internal_error
+  - authentication_failed
+  - not_found
+  - conflict
+  - upstream_validation_failed
+  - upstream_failure
+  - invalid_response
+  - response_too_large
+  - timeout
+  - connection_failed
+  - redirect_rejected
+  - blocked_address
 - operation_id: send_products
   display_name: Send products to Centas
-  description: 'Sends product cards to Centas WS in one batch; Centas WS creates new ones and updates
-    known ones and returns the counts. Only the fields given are sent. Centas WS does not check for repeats:
-    sending the same product again can create it a second time.'
+  description: 'Sends product cards in one batch; Centas WS creates new ones and updates known ones and
+    returns the counts. Only the fields given are sent. Centas WS does not check for repeats: sending
+    the same product again can create it a second time.'
   operation_kind: action
   category: finance
   connection_type_ids:
@@ -1111,16 +2810,16 @@ operations:
   workflow_visible: true
   effect_kind: centas_send_products
   inputs:
-  - *id002
+  - *id003
   - name: products
     value_type: array
     required: true
     schema:
       type: array
       title: Products
-      description: 'The products, 1 to 500: code, id, name, unit, price, vat_percent, stock, group1-3,
-        barcode, description, photo, stocks [{warehouse_id, warehouse_name, quantity}], parameters [{name,
-        value}].'
+      description: 'The products, 1 to 500: code and any of id, name, unit, price, cost, vat_percent,
+        stock, group1-4, barcode, description, manufacturer, net_weight, gross_weight, analog_products,
+        recommended_products, photo, vat_code, ordered, warehouse, stocks, parameters.'
       minItems: 1
       maxItems: 500
       items:
@@ -1135,7 +2834,7 @@ operations:
             description: Product code (kodas).
           id:
             type: string
-            maxLength: 50
+            maxLength: 20
             description: Product ID in Centas WS (id).
           name:
             type: string
@@ -1148,12 +2847,15 @@ operations:
           price:
             type: *id001
             description: Price, up to 6 decimals (kaina).
+          cost:
+            type: *id001
+            description: Cost price (savikaina).
           vat_percent:
             type: *id001
             description: VAT rate in percent (pvmtar).
           stock:
             type: *id001
-            description: Stock in all (likutis).
+            description: Stock balance (likutis).
           group1:
             type: string
             maxLength: 100
@@ -1166,21 +2868,60 @@ operations:
             type: string
             maxLength: 100
             description: Group 3 (grupe3).
+          group4:
+            type: string
+            maxLength: 100
+            description: Group 4 (grupe4).
           barcode:
             type: string
             maxLength: 50
             description: Barcode (barkodas).
           description:
             type: string
-            maxLength: 2000
+            maxLength: 4000
             description: Description (aprasymas).
+          manufacturer:
+            type: string
+            maxLength: 255
+            description: Manufacturer (gamintojas).
+          net_weight:
+            type: *id001
+            description: Net weight (svoris_neto).
+          gross_weight:
+            type: *id001
+            description: Gross weight (svoris_bruto).
+          analog_products:
+            type: array
+            maxItems: 100
+            items:
+              type: string
+              maxLength: 50
+            description: Analog product codes (AnalogProducts).
+          recommended_products:
+            type: array
+            maxItems: 100
+            items:
+              type: string
+              maxLength: 50
+            description: Recommended product codes (RecommendedProducts).
           photo:
             type: string
             maxLength: 500
-            description: Photo (Nuotrauka).
+            description: Photo URL (Nuotrauka).
+          vat_code:
+            type: string
+            maxLength: 20
+            description: VAT classifier code (mok_kodas).
+          ordered:
+            type: *id001
+            description: Ordered quantity (uzsak).
+          warehouse:
+            type: string
+            maxLength: 50
+            description: Warehouse (sandel).
           stocks:
             type: array
-            maxItems: 50
+            maxItems: 100
             description: Stock by warehouse (Stocks).
             items:
               type: object
@@ -1192,14 +2933,14 @@ operations:
                 warehouse_id:
                   type: string
                   maxLength: 50
-                  description: Warehouse ID (WarehouseId).
+                  description: WarehouseId.
                 warehouse_name:
                   type: string
                   maxLength: 255
-                  description: Warehouse name (WarehouseName).
+                  description: WarehouseName.
                 quantity:
                   type: *id001
-                  description: Quantity (Quantity).
+                  description: Quantity.
           parameters:
             type: array
             maxItems: 100
@@ -1213,38 +2954,32 @@ operations:
                 name:
                   type: string
                   maxLength: 255
-                  description: Parameter name (Name).
+                  description: Name.
                 value:
                   type: string
                   maxLength: 1000
-                  description: Parameter value (Value).
+                  description: Value.
   outputs:
   - name: sent
     value_type: integer
     schema:
       type: integer
       description: How many products were sent.
-  - name: found
+  - name: products_found_xml
     value_type: integer
     schema:
-      type:
-      - integer
-      - 'null'
-      description: How many Centas WS found in them.
-  - name: created
+      type: *id006
+      description: How many Centas WS found.
+  - name: products_created
     value_type: integer
     schema:
-      type:
-      - integer
-      - 'null'
-      description: How many Centas WS created.
-  - name: updated
+      type: *id006
+      description: How many it created.
+  - name: products_updated
     value_type: integer
     schema:
-      type:
-      - integer
-      - 'null'
-      description: How many Centas WS updated.
+      type: *id006
+      description: How many it updated.
   - name: codes
     value_type: array
     schema:
@@ -1252,7 +2987,7 @@ operations:
       items:
         type: string
       description: The product codes sent, in order.
-  - *id008
+  - *id004
   - name: external_effect_status
     value_type: text
     schema:
@@ -1263,9 +2998,9 @@ operations:
       type: boolean
   result_fields:
   - result.sent
-  - result.found
-  - result.created
-  - result.updated
+  - result.products_found_xml
+  - result.products_created
+  - result.products_updated
   - result.codes
   - result.warnings
   - result.external_effect_status
@@ -1288,26 +3023,214 @@ operations:
   - redirect_rejected
   - blocked_address
   - timeout_unknown
-- operation_id: get_products
-  display_name: Get products
-  description: Reads product cards, with stock by warehouse and parameters, one page at a time; or one
-    product by its ID. The data is what the Centas program last uploaded to Centas WS (its product export),
-    read whole and filtered here.
+- operation_id: send_contrahents
+  display_name: Send clients and suppliers to Centas
+  description: 'Sends clients and suppliers in one batch; Centas WS creates new ones and updates known
+    ones. When branches are given, Centas WS may delete branches it has that are not among them (it reports
+    how many). Centas WS does not check for repeats: sending the same client again can create it a second
+    time.'
+  operation_kind: action
+  category: finance
+  connection_type_ids:
+  - centas
+  workflow_visible: true
+  effect_kind: centas_send_contrahents
+  inputs:
+  - *id003
+  - name: contrahents
+    value_type: array
+    required: true
+    schema:
+      type: array
+      title: Clients and suppliers
+      description: '1 to 500: name and any of id, company_code, vat_code, country, city, address, email,
+        phone, iban, is_buyer, is_supplier, debt, telema_id, edisoft_iln, branches [{name, address, country,
+        city}].'
+      minItems: 1
+      maxItems: 500
+      items:
+        type: object
+        additionalProperties: false
+        required:
+        - name
+        properties:
+          name:
+            type: string
+            maxLength: 255
+            description: Name (pavadinimas).
+          id:
+            type: string
+            maxLength: 20
+            description: ID in Centas WS (id).
+          company_code:
+            type: string
+            maxLength: 50
+            description: Company code (imones_kodas).
+          vat_code:
+            type: string
+            maxLength: 50
+            description: VAT code (pvm_kodas).
+          country:
+            type: string
+            maxLength: 100
+            description: Country (salis).
+          city:
+            type: string
+            maxLength: 100
+            description: City (miestas).
+          address:
+            type: string
+            maxLength: 255
+            description: Address (adresas).
+          email:
+            type: string
+            maxLength: 255
+            description: E-mail (email).
+          phone:
+            type: string
+            maxLength: 50
+            description: Phone (telefonas).
+          iban:
+            type: string
+            maxLength: 50
+            description: IBAN (iban_nr).
+          is_buyer:
+            type: boolean
+            description: A buyer (pirkejas).
+          is_supplier:
+            type: boolean
+            description: A supplier (tiekejas).
+          debt:
+            type: *id001
+            description: Debt (skola).
+          telema_id:
+            type: string
+            maxLength: 50
+            description: Telema ID (telema_id).
+          edisoft_iln:
+            type: string
+            maxLength: 50
+            description: Edisoft ILN (edisoft_iln).
+          branches:
+            type: array
+            maxItems: 100
+            description: Branches (padaliniai).
+            items:
+              type: object
+              additionalProperties: false
+              required:
+              - name
+              properties:
+                name:
+                  type: string
+                  maxLength: 255
+                  description: Name (pavad).
+                address:
+                  type: string
+                  maxLength: 255
+                  description: Address.
+                country:
+                  type: string
+                  maxLength: 100
+                  description: Country.
+                city:
+                  type: string
+                  maxLength: 100
+                  description: City.
+  outputs:
+  - name: sent
+    value_type: integer
+    schema:
+      type: integer
+      description: How many were sent.
+  - name: contrahents_found_xml
+    value_type: integer
+    schema:
+      type: *id006
+      description: How many Centas WS found.
+  - name: contrahents_created
+    value_type: integer
+    schema:
+      type: *id006
+      description: How many it created.
+  - name: contrahents_updated
+    value_type: integer
+    schema:
+      type: *id006
+      description: How many it updated.
+  - name: branches_created
+    value_type: integer
+    schema:
+      type: *id006
+      description: Branches created.
+  - name: branches_updated
+    value_type: integer
+    schema:
+      type: *id006
+      description: Branches updated.
+  - name: branches_deleted
+    value_type: integer
+    schema:
+      type: *id006
+      description: Branches deleted.
+  - *id004
+  - name: external_effect_status
+    value_type: text
+    schema:
+      type: string
+  - name: definitely_no_external_effect
+    value_type: boolean
+    schema:
+      type: boolean
+  result_fields:
+  - result.sent
+  - result.contrahents_found_xml
+  - result.contrahents_created
+  - result.contrahents_updated
+  - result.branches_created
+  - result.branches_updated
+  - result.branches_deleted
+  - result.warnings
+  - result.external_effect_status
+  - result.definitely_no_external_effect
+  error_codes:
+  - invalid_payload
+  - invalid_host_envelope
+  - invalid_connection
+  - unsupported_operation
+  - internal_error
+  - authentication_failed
+  - not_found
+  - conflict
+  - upstream_validation_failed
+  - upstream_failure
+  - invalid_response
+  - response_too_large
+  - timeout
+  - connection_failed
+  - redirect_rejected
+  - blocked_address
+  - timeout_unknown
+- operation_id: get_contrahents
+  display_name: Get clients and suppliers
+  description: Reads clients and suppliers with their branches; or one by its ID. The data is what the
+    Centas program uploaded to Centas WS.
   operation_kind: source
   category: finance
   connection_type_ids:
   - centas
   workflow_visible: true
   inputs:
-  - *id002
+  - *id003
   - name: id
-    value_type: text
+    value_type: integer
     required: false
     schema:
-      type: string
-      title: Product ID
-      description: Only this product (its ID in Centas WS).
-      maxLength: 50
+      type: integer
+      minimum: 1
+      maximum: 2147483647
+      title: ID
+      description: Only this client or supplier (its ID in Centas WS).
   - name: page
     value_type: integer
     required: false
@@ -1333,100 +3256,40 @@ operations:
       type: array
       items:
         type: object
-        additionalProperties: false
-        required: &id020
-        - id
-        - code
-        - name
-        - unit
-        - price
-        - vat_percent
-        - stock
-        - group1
-        - group2
-        - group3
-        - barcode
-        - description
-        - photo
-        - stocks
-        - parameters
-        properties: &id021
+        additionalProperties: true
+        description: 'A client or supplier: id, pavadinimas, imones_kodas, pvm_kodas, salis, miestas,
+          adresas, email, telefonas, iban_nr, pirkejas, tiekejas, skola, padaliniai (branches).'
+        properties:
           id:
-            type: *id003
-            description: The product's ID in Centas WS.
-          code:
-            type: *id003
-            description: Its code.
-          name:
-            type: *id003
-            description: Its name.
-          unit:
-            type: *id003
-            description: Its unit of measure.
-          price:
-            type: *id003
-            description: Its price.
-          vat_percent:
-            type: *id003
-            description: Its VAT rate in percent.
-          stock:
-            type: *id003
-            description: Its stock in all.
-          group1:
-            type: *id003
-            description: Group 1.
-          group2:
-            type: *id003
-            description: Group 2.
-          group3:
-            type: *id003
-            description: Group 3.
-          barcode:
-            type: *id003
-            description: Its barcode.
-          description:
-            type: *id003
-            description: Its description.
-          photo:
-            type: *id003
-            description: Its photo, as Centas holds it.
-          stocks:
+            description: ID.
+          pavadinimas:
+            description: Name.
+          imones_kodas:
+            description: Company code.
+          pvm_kodas:
+            description: VAT code.
+          salis:
+            description: Country.
+          miestas:
+            description: City.
+          adresas:
+            description: Address.
+          email:
+            description: E-mail.
+          telefonas:
+            description: Phone.
+          iban_nr:
+            description: IBAN.
+          pirkejas:
+            description: Buyer (1 or 0).
+          tiekejas:
+            description: Supplier (1 or 0).
+          skola:
+            description: Debt.
+          padaliniai:
             type: array
-            description: Stock by warehouse.
-            items:
-              type: object
-              additionalProperties: false
-              required:
-              - warehouse_id
-              - warehouse_name
-              - quantity
-              properties:
-                warehouse_id:
-                  type: *id003
-                  description: Warehouse ID.
-                warehouse_name:
-                  type: *id003
-                  description: Warehouse name.
-                quantity:
-                  type: *id003
-                  description: Quantity.
-          parameters:
-            type: array
-            description: Product parameters.
-            items:
-              type: object
-              additionalProperties: false
-              required:
-              - name
-              - value
-              properties:
-                name:
-                  type: *id003
-                  description: Parameter name.
-                value:
-                  type: *id003
-                  description: Parameter value.
-      description: The products of this page.
+            description: 'Branches: pavad, adresas, salis, miestas.'
+      description: The clients and suppliers of this page.
   - name: count
     value_type: integer
     schema:
@@ -1436,7 +3299,7 @@ operations:
     value_type: integer
     schema:
       type: integer
-      description: How many rows match in all.
+      description: How many rows Centas WS returned in all.
   - name: page
     value_type: integer
     schema:
@@ -1450,11 +3313,9 @@ operations:
   - name: next_page
     value_type: integer
     schema:
-      type:
-      - integer
-      - 'null'
+      type: *id006
       description: The page to read next, or null.
-  - *id008
+  - *id004
   result_fields:
   - result.items
   - result.count
@@ -1480,54 +3341,39 @@ operations:
   - connection_failed
   - redirect_rejected
   - blocked_address
-- operation_id: find_product
-  display_name: Find a product by code or barcode
-  description: Finds the one product with this code or barcode. Several products with it stop the step
-    with a conflict. The data is what the Centas program last uploaded to Centas WS (its product export),
-    read whole and filtered here.
+- operation_id: find_company_by_code
+  display_name: Find a company's name by its code
+  description: Looks a company up by its registration code and returns its name.
   operation_kind: source
   category: finance
   connection_type_ids:
   - centas
   workflow_visible: true
   inputs:
-  - *id002
+  - *id003
   - name: code
     value_type: text
-    required: false
+    required: true
     schema:
       type: string
-      title: Code
-      description: The product code, exactly.
-      maxLength: 50
-  - name: barcode
-    value_type: text
-    required: false
-    schema:
-      type: string
-      title: Barcode
-      description: Or the barcode, exactly.
+      title: Company code
+      description: The company registration code.
       maxLength: 50
   outputs:
   - name: found
     value_type: boolean
     schema:
       type: boolean
-      description: True when the product exists.
-  - name: product
-    value_type: object
+      description: True when a company was found.
+  - name: name
+    value_type: text
     schema:
-      type:
-      - object
-      - 'null'
-      additionalProperties: false
-      required: *id020
-      properties: *id021
-      description: The product, or null.
-  - *id008
+      type: *id002
+      description: The company's name.
+  - *id004
   result_fields:
   - result.found
-  - result.product
+  - result.name
   - result.warnings
   error_codes:
   - invalid_payload
@@ -1546,123 +3392,122 @@ operations:
   - connection_failed
   - redirect_rejected
   - blocked_address
-- operation_id: get_stock_levels
-  display_name: Get stock levels
-  description: Stock of products by warehouse, one row per product and warehouse, optionally for one product
-    or one warehouse. The data is what the Centas program last uploaded to Centas WS (its product export),
-    read whole and filtered here.
-  operation_kind: source
+- operation_id: send_consignment
+  display_name: Send a consignment note to Centas
+  description: 'Sends a consignment note (waybill) with its lines. Centas WS does not check for repeats:
+    sending the same consignment note again can create it a second time.'
+  operation_kind: action
   category: finance
   connection_type_ids:
   - centas
   workflow_visible: true
+  effect_kind: centas_send_consignment
   inputs:
-  - *id002
-  - name: code
+  - *id003
+  - name: document_uid
+    value_type: text
+    required: true
+    schema:
+      type: string
+      title: Document UID
+      description: The consignment's unique ID (DocumentUID).
+      maxLength: 100
+  - name: document_number
+    value_type: text
+    required: true
+    schema:
+      type: string
+      title: Document number
+      description: The related document number (DocumentNumber).
+      maxLength: 50
+  - name: document_date
+    value_type: text
+    required: true
+    schema:
+      type: string
+      title: Document date
+      description: The document date (DocumentDate). YYYY-MM-DD.
+      maxLength: 10
+      pattern: ^\d{4}-\d{2}-\d{2}$
+  - name: estimated_arrival
     value_type: text
     required: false
     schema:
       type: string
-      title: Code
-      description: Only this product code.
-      maxLength: 50
-  - name: warehouse_id
+      title: Estimated arrival
+      description: Estimated time of arrival (EstimatedTimeOfArrival). YYYY-MM-DD.
+      maxLength: 10
+      pattern: ^\d{4}-\d{2}-\d{2}$
+  - name: consignee_name
+    value_type: text
+    required: true
+    schema:
+      type: string
+      title: Consignee name
+      description: The consignee (ConsigneeName).
+      maxLength: 255
+  - name: consignee_code
     value_type: text
     required: false
     schema:
       type: string
-      title: Warehouse ID
-      description: Only this warehouse.
+      title: Consignee code
+      description: The consignee's registration number (ConsigneeRegistrationNumber).
       maxLength: 50
-  - name: page
-    value_type: integer
-    required: false
-    schema:
-      type: integer
-      minimum: 1
-      maximum: 1000000
-      title: Page
-      description: The page to read, from 1; pass next_page to continue.
-  - name: limit
-    value_type: integer
-    required: false
-    schema:
-      type: integer
-      minimum: 1
-      maximum: 500
-      title: Rows
-      description: Rows per page, 1 to 500. Default 100.
-  outputs:
-  - name: items
+  - name: lines
     value_type: array
+    required: true
     schema:
       type: array
+      title: Lines
+      description: '1 to 500: description, unit, quantity.'
+      minItems: 1
+      maxItems: 500
       items:
         type: object
         additionalProperties: false
         required:
-        - code
-        - name
+        - description
         - unit
-        - warehouse_id
-        - warehouse_name
         - quantity
         properties:
-          code:
-            type: *id003
-            description: The product's code.
-          name:
-            type: *id003
-            description: Its name.
+          description:
+            type: string
+            maxLength: 255
+            description: Product description (ProductDescription).
           unit:
-            type: *id003
-            description: Its unit of measure.
-          warehouse_id:
-            type: *id003
-            description: Warehouse ID; null for the stock in all.
-          warehouse_name:
-            type: *id003
-            description: Warehouse name.
+            type: string
+            maxLength: 20
+            description: Unit of measure (UnitOfMeasure).
           quantity:
-            type: *id003
-            description: Quantity in stock.
-      description: One row per product and warehouse.
-  - name: count
+            type: *id001
+            description: Quantity (Quantity).
+  outputs:
+  - name: lines_sent
     value_type: integer
     schema:
       type: integer
-      description: How many rows this page holds.
-  - name: total
+      description: How many lines were sent.
+  - name: consignment_rows_created
     value_type: integer
     schema:
-      type: integer
-      description: How many rows match in all.
-  - name: page
-    value_type: integer
+      type: *id006
+      description: How many rows Centas WS created.
+  - *id004
+  - name: external_effect_status
+    value_type: text
     schema:
-      type: integer
-      description: This page's number.
-  - name: has_more
+      type: string
+  - name: definitely_no_external_effect
     value_type: boolean
     schema:
       type: boolean
-      description: True when more rows follow.
-  - name: next_page
-    value_type: integer
-    schema:
-      type:
-      - integer
-      - 'null'
-      description: The page to read next, or null.
-  - *id008
   result_fields:
-  - result.items
-  - result.count
-  - result.total
-  - result.page
-  - result.has_more
-  - result.next_page
+  - result.lines_sent
+  - result.consignment_rows_created
   - result.warnings
+  - result.external_effect_status
+  - result.definitely_no_external_effect
   error_codes:
   - invalid_payload
   - invalid_host_envelope
@@ -1680,31 +3525,161 @@ operations:
   - connection_failed
   - redirect_rejected
   - blocked_address
+  - timeout_unknown
 - operation_id: test_connection
   display_name: Test the connection
-  description: Checks the key by starting to read the product export; reads only its first few kilobytes.
+  description: Checks the WS key and returns until when it is valid; warns 30 days before it expires.
   operation_kind: source
   category: finance
   connection_type_ids:
   - centas
   workflow_visible: true
   inputs:
-  - *id002
+  - *id003
   outputs:
   - name: connected
     value_type: boolean
     schema:
       type: boolean
-      description: True when the key works.
-  - name: duration_ms
+      description: True when Centas WS accepted the key.
+  - name: valid_until
+    value_type: text
+    schema:
+      type: *id002
+      description: Until when the key is valid.
+  - name: days_left
     value_type: integer
     schema:
-      type: integer
-      description: How long the check took, in milliseconds.
-  - *id008
+      type: *id006
+      description: Days until it expires.
+  - *id004
   result_fields:
   - result.connected
-  - result.duration_ms
+  - result.valid_until
+  - result.days_left
+  - result.warnings
+  error_codes:
+  - invalid_payload
+  - invalid_host_envelope
+  - invalid_connection
+  - unsupported_operation
+  - internal_error
+  - authentication_failed
+  - not_found
+  - conflict
+  - upstream_validation_failed
+  - upstream_failure
+  - invalid_response
+  - response_too_large
+  - timeout
+  - connection_failed
+  - redirect_rejected
+  - blocked_address
+- operation_id: get_statistics
+  display_name: Get counts of new documents
+  description: Counts the new invoices, orders, purchases and payments waiting in Centas WS, without taking
+    them, and the key's expiry. Works with an expired key too.
+  operation_kind: source
+  category: finance
+  connection_type_ids:
+  - centas
+  workflow_visible: true
+  inputs:
+  - *id003
+  outputs:
+  - name: new_invoices
+    value_type: integer
+    schema:
+      type: *id006
+      description: New invoices.
+  - name: new_orders
+    value_type: integer
+    schema:
+      type: *id006
+      description: New orders.
+  - name: new_purchases
+    value_type: integer
+    schema:
+      type: *id006
+      description: New purchases.
+  - name: new_payments_bd
+    value_type: integer
+    schema:
+      type: *id006
+      description: New bank debit payments.
+  - name: new_payments_cd
+    value_type: integer
+    schema:
+      type: *id006
+      description: New cash debit payments.
+  - name: new_payments_cd2
+    value_type: integer
+    schema:
+      type: *id006
+      description: New cash debit 2 payments.
+  - name: new_payments_bc
+    value_type: integer
+    schema:
+      type: *id006
+      description: New bank credit payments.
+  - name: token_valid_until
+    value_type: text
+    schema:
+      type: *id002
+      description: Until when the key is valid.
+  - *id004
+  result_fields:
+  - result.new_invoices
+  - result.new_orders
+  - result.new_purchases
+  - result.new_payments_bd
+  - result.new_payments_cd
+  - result.new_payments_cd2
+  - result.new_payments_bc
+  - result.token_valid_until
+  - result.warnings
+  error_codes:
+  - invalid_payload
+  - invalid_host_envelope
+  - invalid_connection
+  - unsupported_operation
+  - internal_error
+  - authentication_failed
+  - not_found
+  - conflict
+  - upstream_validation_failed
+  - upstream_failure
+  - invalid_response
+  - response_too_large
+  - timeout
+  - connection_failed
+  - redirect_rejected
+  - blocked_address
+- operation_id: check_service
+  display_name: Check that Centas WS is running
+  description: Asks Centas WS whether it is running; uses no key.
+  operation_kind: source
+  category: finance
+  connection_type_ids:
+  - centas
+  workflow_visible: true
+  inputs:
+  - *id003
+  outputs:
+  - name: running
+    value_type: boolean
+    schema:
+      type: boolean
+      description: True when Centas WS answered ok.
+  - name: status
+    value_type: text
+    schema:
+      type: *id002
+      description: The status Centas WS gave.
+  - *id004
+  result_fields:
+  - result.running
+  - result.status
   - result.warnings
   error_codes:
   - invalid_payload

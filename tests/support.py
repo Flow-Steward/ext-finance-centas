@@ -1,4 +1,4 @@
-"""A fake Centas WS and invocation helpers for the tests (no network)."""
+"""A fake Centas WS, an in-memory artifact plane and invocation helpers (no network)."""
 
 from __future__ import annotations
 
@@ -6,6 +6,8 @@ import io
 import json
 from collections.abc import Callable
 from email.message import Message
+from email.parser import BytesParser
+from email.policy import HTTP
 from pathlib import Path
 from typing import Any
 from urllib.error import HTTPError
@@ -19,18 +21,34 @@ TOKEN = "tk_fixture0123456789abcdefTOKEN"  # pragma: allowlist secret
 PREFIX = "/v1/"
 
 
+def _multipart(content_type: str, body: bytes) -> dict[str, str]:
+    message = BytesParser(policy=HTTP).parsebytes(
+        f"Content-Type: {content_type}\r\n\r\n".encode() + body
+    )
+    fields: dict[str, str] = {}
+    for part in message.iter_parts():
+        name = part.get_param("name", header="content-disposition")
+        payload_ = part.get_payload(decode=True)
+        assert isinstance(payload_, bytes)
+        fields[str(name)] = payload_.decode("utf-8")
+    return fields
+
+
 class Call:
     def __init__(self, request: Any) -> None:
         parts = urlsplit(request.full_url)
         self.url = request.full_url
-        self.scheme = parts.scheme
-        self.host = parts.hostname
         self.path = parts.path[len(PREFIX) :] if parts.path.startswith(PREFIX) else parts.path
         self.verb = request.get_method()
         self.query = dict(parse_qsl(parts.query))
         self.headers = {k.lower(): v for k, v in request.header_items()}
         self.raw_body = request.data or b""
-        self.form = dict(parse_qsl(self.raw_body.decode("ascii"))) if self.raw_body else {}
+        content_type = self.headers.get("content-type", "")
+        self.form = (
+            _multipart(content_type, self.raw_body)
+            if content_type.startswith("multipart/form-data")
+            else {}
+        )
 
     def rows(self) -> Any:
         return json.loads(self.form["rows"])
@@ -67,7 +85,7 @@ class FakeCentas:
     """Answers by path; a list of answers is used in order.
 
     An answer is a dict (JSON, HTTP 200), bytes (HTTP 200), a (status, body) tuple, an
-    exception to raise or a callable taking the Call.
+    exception to raise or a callable taking the Call. Route names use ``__`` for ``/``.
     """
 
     def __init__(self, **routes: Any) -> None:
@@ -95,6 +113,24 @@ class FakeCentas:
 
     def paths(self) -> list[str]:
         return [c.path for c in self.calls]
+
+
+class Files:
+    """An in-memory artifact plane."""
+
+    def __init__(self, content: bytes = b"%PDF-1.4 test", fail: bool = False) -> None:
+        self.content = content
+        self.fail = fail
+        self.written: list[dict[str, Any]] = []
+
+    def reader(self, payload: Any, *, artifact_id: str, timeout_seconds: float) -> bytes:
+        return self.content
+
+    def writer(self, payload: Any, chunks: list[bytes], **kw: Any) -> dict[str, Any]:
+        if self.fail:
+            raise RuntimeError("storage down")
+        self.written.append({"data": b"".join(chunks), **kw})
+        return {"artifact_handle": f"art_{len(self.written)}"}
 
 
 def payload(
@@ -135,23 +171,26 @@ def run(
     inputs: dict[str, Any] | None = None,
     *,
     clock: Callable[[], float] | None = None,
+    files: Files | None = None,
     **kw: Any,
 ) -> dict[str, Any]:
+    files = files or Files()
+
     def factory(connection: Any) -> CentasTransport:
         if clock is None:
             return CentasTransport(connection, opener=fake)
         return CentasTransport(connection, opener=fake, clock=clock)
 
-    return handle_runtime(payload(operation_id, inputs, **kw), transport_factory=factory)
+    return handle_runtime(
+        payload(operation_id, inputs, **kw),
+        transport_factory=factory,
+        artifact_reader=files.reader,
+        artifact_writer=files.writer,
+    )
 
 
-def products_xml(*items: str, token: str = TOKEN) -> bytes:
-    body = "".join(f"<item><token>{token}</token><oper>UPD</oper>{i}</item>" for i in items)
-    return f'<?xml version="1.0" encoding="UTF-8"?>\n<root>{body}</root>'.encode()
-
-
-def payments_xml(*payments: str, token: str = TOKEN) -> bytes:
-    body = "".join(f"<Payment><token>{token}</token>{p}</Payment>" for p in payments)
+def xml(*records: str, tag: str = "item", token: str = TOKEN) -> bytes:
+    body = "".join(f"<{tag}><token>{token}</token>{r}</{tag}>" for r in records)
     return f'<?xml version="1.0" encoding="UTF-8"?>\n<root>{body}</root>'.encode()
 
 

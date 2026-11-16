@@ -16,7 +16,7 @@ def mark_write(result: dict[str, Any]) -> dict[str, Any]:
 
 
 def fit_write_result(result: dict[str, Any]) -> dict[str, Any]:
-    """Drop the long echo lists until the result fits; the write itself already happened."""
+    """Drop long echo lists until the result fits; the write itself already happened."""
     for key in ("references", "codes"):
         if budget.fits(result):
             break

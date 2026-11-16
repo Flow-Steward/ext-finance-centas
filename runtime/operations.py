@@ -7,9 +7,11 @@ import traceback
 from collections.abc import Mapping
 from typing import Any
 
+from flowsteward_extension_sdk import read_artifact_bytes, write_artifact_stream
+
 from . import budget, catalog, errors
 from .connection import connection_from_payload
-from .context import Context, TransportFactory
+from .context import ArtifactReader, ArtifactWriter, Context, TransportFactory
 from .errors import ExtensionError, error_response, invalid
 from .limits import STEP_MARGIN_SECONDS, STEP_TIMEOUT_SECONDS
 from .results import fit_write_result, mark_write, ok
@@ -20,6 +22,8 @@ def handle_runtime(
     payload: Mapping[str, Any],
     *,
     transport_factory: TransportFactory = CentasTransport,
+    artifact_reader: ArtifactReader = read_artifact_bytes,
+    artifact_writer: ArtifactWriter = write_artifact_stream,
 ) -> dict[str, Any]:
     """Dispatch one invocation through the closed registry."""
     transport: CentasTransport | None = None
@@ -30,10 +34,10 @@ def handle_runtime(
                 errors.UNSUPPORTED_OPERATION, "That operation is not part of this extension"
             )
         operation_input = _as_input(raw_input)
-        write = operation_id in catalog.WRITE_OPERATION_IDS
-        if write and _test_mode(payload):
-            # The host suppresses test-mode writes before spawning the extension;
-            # this is the backstop. Validated first, then nothing is sent.
+        effect = operation_id in catalog.EFFECT_OPERATION_IDS
+        if effect and _test_mode(payload):
+            # The host suppresses test-mode effects before spawning the extension;
+            # this is the backstop. Validated first, then nothing is sent or taken.
             return ok(neutral_result(operation_id, operation_input))
         connection_ref = operation_input.get("connection_ref")
         connection = connection_from_payload(
@@ -41,12 +45,18 @@ def handle_runtime(
         )
         transport = transport_factory(connection)
         transport.deadline = transport.clock() + STEP_TIMEOUT_SECONDS - STEP_MARGIN_SECONDS
-        context = Context(payload=payload, operation_input=operation_input, transport=transport)
-        if write:
+        context = Context(
+            payload=payload,
+            operation_input=operation_input,
+            transport=transport,
+            artifact_reader=artifact_reader,
+            artifact_writer=artifact_writer,
+        )
+        if effect:
             # Inputs are checked in full before anything is sent.
             catalog.VALIDATORS[operation_id](operation_input)
-            result = catalog.WRITES[operation_id](context)
-            return ok(mark_write(fit_write_result(result)))
+            runner = catalog.WRITES.get(operation_id) or catalog.TAKES[operation_id]
+            return ok(mark_write(fit_write_result(runner(context))))
         result = catalog.READS[operation_id](context)
         budget.ensure_fits(result)
         return ok(result)
@@ -164,7 +174,7 @@ def neutral_result(operation_id: str, operation_input: Mapping[str, Any]) -> dic
     """
     checked = catalog.VALIDATORS[operation_id](operation_input)
     result = dict(catalog.NEUTRAL[operation_id])
-    if operation_id in {"send_sales_invoice", "send_purchase_invoice", "send_order"}:
+    if operation_id in catalog.DOCUMENT_STEPS:
         result.update(checked[1])
     result["warnings"] = []
     # Nothing was sent. "failed" + definitely-no-effect is the pair Core accepts

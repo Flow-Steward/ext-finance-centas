@@ -11,13 +11,18 @@ components:
     ## 0.1.0 — 2026-11-16
 
     - First release: steps for Centas WS (ws.centas.lt), the web exchange of the Centas
-      accounting program, covering its whole documented API.
-    - Send a sales invoice, a purchase invoice or a customer order with its lines; send bank
-      payments and product cards in batches. Totals are checked against the lines, or computed
-      from them, before anything is sent; amounts are limited to 15 whole digits.
-    - Send bank payments first reads Centas WS's payment export: when it already lists one of
-      the references, or cannot be read, the step stops and sends nothing.
-    - Get products, find a product by code or barcode, get stock levels by warehouse and get
-      payments, one page at a time, from what the Centas program uploaded to Centas WS.
-    - The key is sent only to https://ws.centas.lt, in the body of every write; it is removed
-      from everything the steps return.
+      accounting program, covering every operation of its API specification.
+    - Send sales invoices, customer orders, purchase invoices and invoices to other companies with
+      their lines; send payments, products, clients and suppliers and consignment notes in
+      batches; update, record payments against or delete sales documents.
+    - Totals are checked against the lines, or computed from them, before anything is sent;
+      amounts are limited to 15 whole digits. A document number Centas WS already has stops the
+      step with a conflict.
+    - Read products, prices and stock, product cards, gallery links, clients and suppliers, sales
+      documents by number, date or unpaid status, purchases of a date range, an order's invoice
+      PDF and counts of new records.
+    - Take new sales documents, orders, purchases and payments from the Centas WS queue; each
+      answer is also saved whole as a workflow file.
+    - Test the connection shows until when the WS key is valid and warns 30 days before it
+      expires. The key is sent only to https://ws.centas.lt and is removed from everything the
+      steps return.

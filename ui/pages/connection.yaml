@@ -38,7 +38,7 @@ components:
 
       **If the test fails:**
 
-      - **Authentication failed** — Centas WS does not accept the key: copy it again, or check that Centas WS is active.
+      - **Authentication failed** — Centas WS does not accept the key: copy it again, or check that it has not expired.
       - **Connection failed** — ws.centas.lt could not be reached from Flow Steward; try again later.
 
-      Test connection reads the start of the product export: it checks the key, not the right to send documents.
+      Test connection checks the key and returns until when it is valid, warning 30 days before it expires. It does not check the right to send documents.

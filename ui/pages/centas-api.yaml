@@ -8,9 +8,10 @@ components:
   type: markdown
   title: How the steps work
   body: |
-    Centas WS (ws.centas.lt) is the web exchange of the Centas program. The steps send sales invoices, purchase invoices, customer orders, bank payments and products to it, and read the products and payments the Centas program uploaded to it.
+    Centas WS (ws.centas.lt) is a two-way exchange between a shop or another system and the Centas program. The steps send invoices, orders, payments, products, clients and consignment notes to it, read what the Centas program uploaded, and — when a workflow plays the Centas program's part — take new records from its queue.
 
-    - **Sent documents wait in Centas WS.** An accountant imports them in Centas (menu ws.centas.lt). A step's success means Centas WS received the document.
+    - **Sent documents wait in Centas WS** until the Centas program imports them. A step's success means Centas WS received the document.
+    - **Take steps empty the queue.** Centas WS marks what they hand out, so the Centas program no longer sees those records as new. Each saves Centas WS's answer whole as a workflow file.
     - **Writes are sent once.** Flow Steward remembers every change it made, so a retried step does not send it twice, and test runs never send. When the outcome is unclear — a timeout, a lost connection, a refusal, an answer that cannot be read — the step is not retried: check Centas WS first.
     - **Totals are checked before sending.** A document whose totals do not match its lines stops with a conflict and nothing is sent.
     - **Reads return pages.** Centas WS sends each export whole; the steps filter it and return up to 500 rows a page.
@@ -20,260 +21,103 @@ components:
   body: |
     ### Send a sales invoice to Centas
 
-    Sends a sales invoice with its lines to Centas WS and returns its document ID. Centas WS keeps what it receives until an accountant imports it in the Centas program (menu ws.centas.lt), so success means received by Centas WS, not yet booked. Centas WS does not check for repeats: sending the same document again can create it a second time.
+    Sends a sales invoice with its lines and returns its document ID. Centas WS refuses a number it already has (a conflict, nothing saved). Centas WS keeps it until the Centas program imports it, so success means Centas WS received it. Centas WS does not check for repeats: sending the same invoice under the automatic number again can create it a second time.
 
-    Action id `send_sales_invoice` · sends data to Centas WS · Centas WS: `POST /v1/documents/create`
+    Action id `send_sales_invoice` · sends data to Centas WS · Centas WS: `POST /documents/create`
 
     **Inputs**
 
-    - `number` (text, optional): The invoice number (dok_num). Leave empty, or write auto, to have Centas number it from its free invoice forms; then give the transaction ID.
-    - `transaction_id` (text, optional): Needed for an automatic number from Centas's invoice forms (trans_id).
+    - `number` (text): The invoice number (dok_num), or auto for Centas's automatic numbering.
     - `date` (date): The invoice date (data). YYYY-MM-DD.
-    - `due_date` (date, optional): The payment term (apmok_iki). YYYY-MM-DD.
+    - `due_date` (date): The payment due date (apmok_iki). YYYY-MM-DD.
     - `buyer_name` (text): The buyer's name (pirkejas).
-    - `buyer_code` (text, optional): The buyer's code in your systems (kl_kodas).
-    - `buyer_company_code` (text, optional): The buyer's company or personal code (im_kodas).
-    - `buyer_vat_code` (text, optional): The buyer's VAT code (pvm_kodas).
-    - `buyer_email` (text, optional): The buyer's e-mail (email).
-    - `buyer_address` (text, optional): The buyer's address (adresas).
-    - `buyer_city` (text, optional): The buyer's city (miestas).
-    - `buyer_country` (text, optional): The buyer's country (salis).
-    - `buyer_eu_type` (one of local, eu, non_eu, optional): local (0), another EU country (1) or outside the EU (2) (estipas).
-    - `buyer_group` (text, optional): The group a new buyer is put in (grupe).
-    - `lines` (list of records): The invoice lines, 1 to 500: code, name, unit, quantity, price without VAT, vat_percent, vat_code, income_account, project.
-    - `net_total` (decimal, optional): The total without VAT (bepvm_suma). Give the net total and the VAT total (and optionally the total) as on the document: they are checked against the lines within one cent per line and sent as given. Leave them empty to have them computed: each line's net amount rounded to cents, its VAT rounded to cents, summed.
+    - `cost` (decimal): The document's cost price total (savikaina).
+    - `lines` (list of records): The invoice lines, 1 to 500: code, name, unit, quantity, price without VAT, vat_percent; optionally kind, ean, vat_code, income_account, project, vat_amount, discount_percent, discount, hs_code, country_origin, material.
+    - `net_total` (decimal, optional): The total without VAT (bepvm_suma). Give the net total and the VAT total (and optionally the total) as on the document: they are checked against the lines within one cent per line and sent as given. Leave them empty to have them computed: each line's net amount rounded to cents, its VAT rounded to cents, summed. Lines with a discount or their own VAT amount need the totals.
     - `vat_total` (decimal, optional): The VAT amount (pvm_suma).
     - `total` (decimal, optional): The total with VAT; must be net total + VAT total.
-    - `cost` (decimal, optional): The document's cost price (savikaina).
-    - `vat_payable_account` (text, optional): The VAT payable account, digits (sask_moketpvm).
-    - `receivable_account` (text, optional): The buyer debt account (sask_pirkskol).
-    - `income_account` (text, optional): The income account, digits (sask_pajamos).
-    - `project` (text, optional): The project or cost centre (projektas).
-    - `order_number` (text, optional): The number of the order this invoice is for (uzsaknr).
-    - `operation_description` (text, optional): An extra description of the operation (oper_apras).
+    - `buyer_company_code` (text, optional): The buyer's company code (im_kodas).
+    - `buyer_vat_code` (text, optional): The buyer's VAT code (pvm_kodas).
+    - `buyer_country` (text, optional): The buyer's country (salis).
+    - `buyer_city` (text, optional): The buyer's city (miestas).
+    - `buyer_address` (text, optional): The buyer's address (adresas).
+    - `buyer_email` (text, optional): The buyer's e-mail (email).
+    - `number_series` (text, optional): The document number series (dok_num_series).
+    - `order_number` (text, optional): The related order number (uzsaknr).
+    - `check_order` (text, optional): Check the related order (check_order).
+    - `document_type` (text, optional): The document type (type).
+    - `transaction_id` (text, optional): Transaction ID for a number from Centas's invoice forms (trans_id).
+    - `buyer_code` (text, optional): The buyer's code in your systems (kl_kodas).
+    - `buyer_eu_type` (one of local, eu, non_eu, optional): local (0), another EU country (1) or outside the EU (2) (estipas).
+    - `buyer_group` (text, optional): The group of a new buyer (grupe).
+    - `vat_payable_account` (text, optional): VAT payable account, digits (sask_moketpvm).
+    - `receivable_account` (text, optional): Buyer debt account (sask_pirkskol).
+    - `income_account` (text, optional): Income account, digits (sask_pajamos).
+    - `project` (text, optional): Project or cost centre (projektas).
+    - `operation_description` (text, optional): Extra description of the operation (oper_apras).
     - `note` (text, optional): A note on the document (pastaba).
-    - `issued_by` (text, optional): Who issued the invoice (israse_asmuo).
+    - `issued_by` (text, optional): Who issued it (israse_asmuo).
     - `issued_by_position` (text, optional): The issuer's position (israse_pareigos).
-    - `intrastat_transport` (text, optional): Transport code for Intrastat (intrs_transprusis).
-    - `intrastat_delivery_terms` (text, optional): Delivery terms code for Intrastat (intrs_pristsal).
-    - `intrastat_transaction` (text, optional): Transaction code for Intrastat (intrs_sandoris).
-    - `intrastat_county` (text, optional): County code for Intrastat (intrs_apskritis).
-    - `intrastat_eu_country` (text, optional): EU country code for Intrastat (intrs_eusalis).
+    - `intrastat_transport` (text, optional): Intrastat transport code (intrs_transprusis).
+    - `intrastat_delivery_terms` (text, optional): Intrastat delivery terms code (intrs_pristsal).
+    - `intrastat_transaction` (text, optional): Intrastat transaction code (intrs_sandoris).
+    - `intrastat_county` (text, optional): Intrastat county code (intrs_apskritis).
+    - `intrastat_eu_country` (text, optional): Intrastat EU country code (intrs_eusalis).
 
     **Results**
 
     - `document_id` (text): The document ID Centas WS returned.
-    - `number` (text): The number sent (auto when Centas numbers it).
+    - `number` (text): The number sent.
     - `net_total` (text): The net total sent.
     - `vat_total` (text): The VAT total sent.
     - `total` (text): The total sent.
     - `warnings` (list): What the step could not do fully or what to check.
 
-    ### Send a customer order to Centas
+    ### Get a sales document by number
 
-    Sends a customer order with its lines to Centas WS and returns its order hash. Centas WS keeps what it receives until an accountant imports it in the Centas program (menu ws.centas.lt), so success means received by Centas WS, not yet booked. Centas WS does not check for repeats: sending the same document again can create it a second time.
+    Reads one sales document by its number, with the fields Centas WS returns.
 
-    Action id `send_order` · sends data to Centas WS · Centas WS: `POST /v1/orders/create`
+    Action id `get_sales_document` · reads only · Centas WS: `GET /documents/get`
 
     **Inputs**
 
-    - `number` (text): The order number (uzsak_num).
-    - `date` (date): The order date (uzsak_data). YYYY-MM-DD.
-    - `customer_name` (text): The customer's name (uzsakovas).
-    - `customer_company_code` (text, optional): The customer's company code (im_kodas).
-    - `customer_vat_code` (text, optional): The customer's VAT code (pvm_kodas).
-    - `customer_email` (text, optional): The customer's e-mail (email).
-    - `customer_phone` (text, optional): The customer's phone (tel).
-    - `customer_address` (text, optional): The customer's address (adresas).
-    - `customer_city` (text, optional): The customer's city (miestas).
-    - `postal_code` (text, optional): The postal code (pasto_kodas).
-    - `customer_note` (text, optional): The customer's note (uzsakovas_pastaba).
-    - `receivable_account` (text, optional): The customer debt account (pirk_skolsask).
-    - `warehouse` (text, optional): The warehouse (sandelis).
-    - `execution_date` (date, optional): When to carry it out (vykd_data). YYYY-MM-DD.
-    - `delivery_date` (date, optional): The delivery date (pristat_data). YYYY-MM-DD.
-    - `payment_date` (date, optional): The payment date (apmok_data). YYYY-MM-DD.
-    - `arrival_date` (date, optional): The arrival date (atvyk_data). YYYY-MM-DD.
-    - `departure_date` (date, optional): The departure date (isvyk_data). YYYY-MM-DD.
-    - `lines` (list of records): The order lines, 1 to 500: code, supplier_code, name, unit, quantity, price without VAT, vat_percent.
-    - `net_total` (decimal, optional): The order total without VAT (bepvm_suma). Give the net total and the VAT total (and optionally the total) as on the document: they are checked against the lines within one cent per line and sent as given. Leave them empty to have them computed: each line's net amount rounded to cents, its VAT rounded to cents, summed.
-    - `vat_total` (decimal, optional): The order's VAT (pvm_suma).
-    - `total` (decimal, optional): The order total with VAT; must be net total + VAT total (uzsak_suma).
+    - `number` (text): The document number.
 
     **Results**
 
-    - `order_hash` (text): The order hash Centas WS returned.
-    - `number` (text): The number sent (auto when Centas numbers it).
-    - `net_total` (text): The net total sent.
-    - `vat_total` (text): The VAT total sent.
-    - `total` (text): The total sent.
+    - `found` (yes/no): True when Centas WS returned the document.
+    - `document` (object): The document as Centas WS returns it, or null.
     - `warnings` (list): What the step could not do fully or what to check.
-- component_id: steps_purchases
-  type: markdown
-  title: Purchases
-  body: |
-    ### Send a purchase invoice to Centas
 
-    Sends a supplier's invoice with its lines to Centas WS and returns its purchase ID. Centas WS keeps what it receives until an accountant imports it in the Centas program (menu ws.centas.lt), so success means received by Centas WS, not yet booked. Centas WS does not check for repeats: sending the same document again can create it a second time.
+    ### Get sales documents by date or unpaid
 
-    Action id `send_purchase_invoice` · sends data to Centas WS · Centas WS: `POST /v1/documents/purchase/import`
+    Reads sales documents of a date range, or all unpaid ones, with their rows. With these filters Centas WS ignores its downloaded mark, so nothing is taken from the queue.
+
+    Action id `get_sales_documents` · reads only · Centas WS: `GET /documents/export (from, to, unpaid)`
 
     **Inputs**
 
-    - `seller_name` (text): The seller's name (kontrah).
-    - `number` (text): The supplier's invoice number (dok_num).
-    - `date` (date): The invoice date (data). YYYY-MM-DD.
-    - `lines` (list of records): The invoice lines, 1 to 500: code, name, unit, quantity, price without VAT, vat_percent, vat_code, project.
-    - `net_total` (decimal, optional): The total without VAT (bepvm_suma). Give the net total and the VAT total (and optionally the total) as on the document: they are checked against the lines within one cent per line and sent as given. Leave them empty to have them computed: each line's net amount rounded to cents, its VAT rounded to cents, summed.
-    - `vat_total` (decimal, optional): The VAT amount (pvm_suma).
-    - `total` (decimal, optional): The total with VAT; must be net total + VAT total.
-
-    **Results**
-
-    - `purchase_id` (text): The purchase ID Centas WS returned.
-    - `number` (text): The number sent (auto when Centas numbers it).
-    - `net_total` (text): The net total sent.
-    - `vat_total` (text): The VAT total sent.
-    - `total` (text): The total sent.
-    - `warnings` (list): What the step could not do fully or what to check.
-- component_id: steps_payments
-  type: markdown
-  title: Payments
-  body: |
-    ### Send bank payments to Centas
-
-    Sends bank payments to Centas WS in one batch and returns how many it created. Each payment needs its own reference (RefNr). Before sending, the step reads Centas WS's payment export: when it already lists one of the references, or cannot be read, the step stops and sends nothing. Centas WS keeps what it receives until an accountant imports it in the Centas program (menu ws.centas.lt), so success means received by Centas WS, not yet booked. Centas WS does not check for repeats: sending the same document again can create it a second time.
-
-    Action id `send_payments` · sends data to Centas WS · Centas WS: `POST /v1/payments/import`
-
-    **Inputs**
-
-    - `payments` (list of records): The payments, 1 to 500: type (for example BankDeb), date, amount, document_number, reference, details, payer_name, payer_code, account.
-
-    **Results**
-
-    - `sent` (whole number): How many payments were sent.
-    - `found` (whole number): How many Centas WS found in them.
-    - `created` (whole number): How many Centas WS created.
-    - `references` (list): The references sent, in order.
-    - `warnings` (list): What the step could not do fully or what to check.
-
-    ### Get payments
-
-    Reads the payments in Centas WS's payment export, optionally only a date range or one reference, one page at a time. The export is read whole and filtered here.
-
-    Action id `get_payments` · reads only · Centas WS: `GET /v1/payments/export`
-
-    **Inputs**
-
-    - `date_from` (date, optional): Only payments on or after this date. YYYY-MM-DD.
-    - `date_to` (date, optional): Only payments on or before this date. YYYY-MM-DD.
-    - `reference` (text, optional): Only the payment with this reference.
+    - `date_from` (date, optional): Only documents on or after this date. YYYY-MM-DD.
+    - `date_to` (date, optional): Only documents on or before this date. YYYY-MM-DD.
+    - `unpaid` (yes/no, optional): Only unpaid documents (apmoketa = 0).
     - `page` (whole number, optional): The page to read, from 1; pass next_page to continue.
     - `limit` (whole number, optional): Rows per page, 1 to 500. Default 100.
 
     **Results**
 
-    - `items` (list of records): The payments of this page. Fields: `type`, `date`, `amount`, `document_number`, `reference`, `details`, `payer_name`, `payer_code`, `account`.
+    - `items` (list of records): The documents of this page. Fields: `type`, `dok_num`, `data`, `apmok_iki`, `pirkejas`, `dok_suma`, `pvm_suma`, `bepvm_suma`, `savikaina`, `im_kodas`, `pvm_kodas`, `apmoketa`, `dok_skola`, `eilute`.
     - `count` (whole number): How many rows this page holds.
-    - `total` (whole number): How many rows match in all.
-    - `page` (whole number): This page's number.
-    - `has_more` (yes/no): True when more rows follow.
-    - `next_page` (whole number): The page to read next, or null.
-    - `warnings` (list): What the step could not do fully or what to check.
-- component_id: steps_products
-  type: markdown
-  title: Products
-  body: |
-    ### Send products to Centas
-
-    Sends product cards to Centas WS in one batch; Centas WS creates new ones and updates known ones and returns the counts. Only the fields given are sent. Centas WS does not check for repeats: sending the same product again can create it a second time.
-
-    Action id `send_products` · sends data to Centas WS · Centas WS: `POST /v1/products/import`
-
-    **Inputs**
-
-    - `products` (list of records): The products, 1 to 500: code, id, name, unit, price, vat_percent, stock, group1-3, barcode, description, photo, stocks [{warehouse_id, warehouse_name, quantity}], parameters [{name, value}].
-
-    **Results**
-
-    - `sent` (whole number): How many products were sent.
-    - `found` (whole number): How many Centas WS found in them.
-    - `created` (whole number): How many Centas WS created.
-    - `updated` (whole number): How many Centas WS updated.
-    - `codes` (list): The product codes sent, in order.
-    - `warnings` (list): What the step could not do fully or what to check.
-
-    ### Get products
-
-    Reads product cards, with stock by warehouse and parameters, one page at a time; or one product by its ID. The data is what the Centas program last uploaded to Centas WS (its product export), read whole and filtered here.
-
-    Action id `get_products` · reads only · Centas WS: `GET /v1/products/export`
-
-    **Inputs**
-
-    - `id` (text, optional): Only this product (its ID in Centas WS).
-    - `page` (whole number, optional): The page to read, from 1; pass next_page to continue.
-    - `limit` (whole number, optional): Rows per page, 1 to 500. Default 100.
-
-    **Results**
-
-    - `items` (list of records): The products of this page. Fields: `id`, `code`, `name`, `unit`, `price`, `vat_percent`, `stock`, `group1`, `group2`, `group3`, `barcode`, `description`, `photo`, `stocks`, `parameters`.
-    - `count` (whole number): How many rows this page holds.
-    - `total` (whole number): How many rows match in all.
+    - `total` (whole number): How many rows Centas WS returned in all.
     - `page` (whole number): This page's number.
     - `has_more` (yes/no): True when more rows follow.
     - `next_page` (whole number): The page to read next, or null.
     - `warnings` (list): What the step could not do fully or what to check.
 
-    ### Find a product by code or barcode
+    ### Take new sales documents from the Centas WS queue
 
-    Finds the one product with this code or barcode. Several products with it stop the step with a conflict. The data is what the Centas program last uploaded to Centas WS (its product export), read whole and filtered here.
+    Reads the sales documents not yet marked as downloaded. Takes them from the Centas WS queue: Centas WS marks what it hands out, so the Centas program will no longer see these records as new. The answer is also saved whole as a workflow file.
 
-    Action id `find_product` · reads only · Centas WS: `GET /v1/products/export`
-
-    **Inputs**
-
-    - `code` (text, optional): The product code, exactly.
-    - `barcode` (text, optional): Or the barcode, exactly.
-
-    **Results**
-
-    - `found` (yes/no): True when the product exists.
-    - `product` (record): The product, or null. Fields: `id`, `code`, `name`, `unit`, `price`, `vat_percent`, `stock`, `group1`, `group2`, `group3`, `barcode`, `description`, `photo`, `stocks`, `parameters`.
-    - `warnings` (list): What the step could not do fully or what to check.
-
-    ### Get stock levels
-
-    Stock of products by warehouse, one row per product and warehouse, optionally for one product or one warehouse. The data is what the Centas program last uploaded to Centas WS (its product export), read whole and filtered here.
-
-    Action id `get_stock_levels` · reads only · Centas WS: `GET /v1/products/export`
-
-    **Inputs**
-
-    - `code` (text, optional): Only this product code.
-    - `warehouse_id` (text, optional): Only this warehouse.
-    - `page` (whole number, optional): The page to read, from 1; pass next_page to continue.
-    - `limit` (whole number, optional): Rows per page, 1 to 500. Default 100.
-
-    **Results**
-
-    - `items` (list of records): One row per product and warehouse. Fields: `code`, `name`, `unit`, `warehouse_id`, `warehouse_name`, `quantity`.
-    - `count` (whole number): How many rows this page holds.
-    - `total` (whole number): How many rows match in all.
-    - `page` (whole number): This page's number.
-    - `has_more` (yes/no): True when more rows follow.
-    - `next_page` (whole number): The page to read next, or null.
-    - `warnings` (list): What the step could not do fully or what to check.
-- component_id: steps_connection
-  type: markdown
-  title: Connection
-  body: |
-    ### Test the connection
-
-    Checks the key by starting to read the product export; reads only its first few kilobytes.
-
-    Action id `test_connection` · reads only · Centas WS: `GET /v1/products/export`
+    Action id `take_new_sales_documents` · takes records from the Centas WS queue · Centas WS: `GET /documents/export`
 
     **Inputs**
 
@@ -281,6 +125,556 @@ components:
 
     **Results**
 
-    - `connected` (yes/no): True when the key works.
-    - `duration_ms` (whole number): How long the check took, in milliseconds.
+    - `items` (list of records): The records taken (empty when they do not fit the step output; then they are all in the file). Fields: `type`, `dok_num`, `data`, `apmok_iki`, `pirkejas`, `dok_suma`, `pvm_suma`, `bepvm_suma`, `savikaina`, `im_kodas`, `pvm_kodas`, `apmoketa`, `dok_skola`, `eilute`.
+    - `count` (whole number): How many records were taken.
+    - `file` (text): Centas WS's answer, whole, as an XML workflow file.
+    - `warnings` (list): What the step could not do fully or what to check.
+
+    ### Update sales documents' payment status
+
+    Sets the downloaded mark, the paid mark or the remaining debt of sales documents named by type, number and date; fields not given stay unchanged.
+
+    Action id `update_sales_documents` · sends data to Centas WS · Centas WS: `POST /documents/update`
+
+    **Inputs**
+
+    - `documents` (list of records): The documents, 1 to 500: type, number, date and at least one of downloaded, paid, remaining_debt.
+
+    **Results**
+
+    - `sent` (whole number): How many documents were sent.
+    - `documents_found` (whole number): How many Centas WS found.
+    - `documents_updated` (whole number): How many it updated.
+    - `warnings` (list): What the step could not do fully or what to check.
+
+    ### Record payments against sales documents
+
+    Records payments against sales documents named by type, number and date, with the amount paid and the payments themselves. Centas WS does not check for repeats: sending the same payment again can create it a second time.
+
+    Action id `record_document_payments` · sends data to Centas WS · Centas WS: `POST /documents/payments/create`
+
+    **Inputs**
+
+    - `documents` (list of records): The documents, 1 to 500: type, number, date, paid_sum, paid_in_full, customer_id and payments [{date, number, description, total}].
+
+    **Results**
+
+    - `sent` (whole number): How many documents were sent.
+    - `documents_payments_found_xml` (whole number): How many Centas WS found.
+    - `documents_payments_created` (whole number): How many payments it created.
+    - `warnings` (list): What the step could not do fully or what to check.
+
+    ### Delete sales documents
+
+    Deletes sales documents from Centas WS, each named exactly by type, number and date — at most 50, no wildcards. A deleted document cannot be read back.
+
+    Action id `delete_sales_documents` · sends data to Centas WS · Centas WS: `POST /documents/delete`
+
+    **Inputs**
+
+    - `documents` (list of records): The documents to delete, 1 to 50: type, number, date.
+
+    **Results**
+
+    - `sent` (whole number): How many documents were named.
+    - `documents_found` (whole number): How many Centas WS found.
+    - `documents_deleted` (whole number): How many it deleted.
+    - `warnings` (list): What the step could not do fully or what to check.
+- component_id: steps_orders
+  type: markdown
+  title: Orders
+  body: |
+    ### Send a customer order to Centas
+
+    Sends a customer order with its lines and returns its order ID. Centas WS keeps it until the Centas program imports it, so success means Centas WS received it. Centas WS does not check for repeats: sending the same order again can create it a second time.
+
+    Action id `send_order` · sends data to Centas WS · Centas WS: `POST /orders/create`
+
+    **Inputs**
+
+    - `number` (text): The order number, unique (uzsak_num).
+    - `date` (date): The order date (uzsak_data). YYYY-MM-DD.
+    - `customer_name` (text): The customer's name (uzsakovas).
+    - `lines` (list of records): The order lines, 1 to 500: code, name, unit, quantity, price without VAT, vat_percent, supplier_code.
+    - `net_total` (decimal, optional): The total without VAT (bepvm_suma). Give the net total and the VAT total (and optionally the total) as on the document: they are checked against the lines within one cent per line and sent as given. Leave them empty to have them computed: each line's net amount rounded to cents, its VAT rounded to cents, summed. Lines with a discount or their own VAT amount need the totals.
+    - `vat_total` (decimal, optional): The VAT amount (pvm_suma).
+    - `total` (decimal, optional): The order total with VAT; must be net total + VAT total (uzsak_suma).
+    - `delivery_date` (date, optional): The delivery date (pristat_data). YYYY-MM-DD.
+    - `carrier` (text, optional): The carrier (vezejas).
+    - `comment` (text, optional): A comment (komentaras).
+    - `customer_note` (text, optional): The customer's note (uzsakovas_pastaba).
+    - `delivery_branch` (text, optional): The delivery branch (uzsak_padalinys).
+    - `delivery_branch_gln` (text, optional): The delivery branch's GLN code (uzsak_padalinys_gln).
+    - `delivery_branch_iln` (text, optional): The delivery branch's ILN code (uzsak_padalinys_iln).
+    - `customer_iln` (text, optional): The customer's ILN code (uzsak_iln).
+    - `customer_company_code` (text, optional): Company registration code (im_kodas).
+    - `customer_vat_code` (text, optional): VAT code (pvm_kodas).
+    - `customer_country` (text, optional): Country (salis).
+    - `customer_city` (text, optional): City (miestas).
+    - `customer_address` (text, optional): Address (adresas).
+    - `customer_email` (text, optional): E-mail (email).
+    - `customer_phone` (text, optional): Phone (tel).
+    - `postal_code` (text, optional): Postal code (pasto_kodas).
+    - `receivable_account` (text, optional): Customer debt account (pirk_skolsask).
+    - `warehouse` (text, optional): Warehouse (sandelis).
+    - `execution_date` (date, optional): When to carry it out (vykd_data). YYYY-MM-DD.
+    - `payment_date` (date, optional): The payment date (apmok_data). YYYY-MM-DD.
+    - `arrival_date` (date, optional): The arrival date (atvyk_data). YYYY-MM-DD.
+    - `departure_date` (date, optional): The departure date (isvyk_data). YYYY-MM-DD.
+
+    **Results**
+
+    - `order_id` (text): The order ID Centas WS returned.
+    - `number` (text): The number sent.
+    - `net_total` (text): The net total sent.
+    - `vat_total` (text): The VAT total sent.
+    - `total` (text): The total sent.
+    - `warnings` (list): What the step could not do fully or what to check.
+
+    ### Take new orders from the Centas WS queue
+
+    Reads the orders not yet marked as downloaded. Takes them from the Centas WS queue: Centas WS marks what it hands out, so the Centas program will no longer see these records as new. The answer is also saved whole as a workflow file.
+
+    Action id `take_new_orders` · takes records from the Centas WS queue · Centas WS: `GET /orders/export`
+
+    **Inputs**
+
+    - none
+
+    **Results**
+
+    - `items` (list of records): The records taken (empty when they do not fit the step output; then they are all in the file). Fields: `uzsak_num`, `uzsak_data`, `uzsakovas`, `uzsak_suma`, `pvm_suma`, `bepvm_suma`, `eilute`.
+    - `count` (whole number): How many records were taken.
+    - `file` (text): Centas WS's answer, whole, as an XML workflow file.
+    - `warnings` (list): What the step could not do fully or what to check.
+
+    ### Get the invoice PDF of an order
+
+    Saves the PDF of the invoice issued for an order as a workflow file, or only checks whether there is one.
+
+    Action id `get_order_invoice_pdf` · reads only · Centas WS: `GET /orders/document/pdf`
+
+    **Inputs**
+
+    - `order_number` (text): The order number.
+    - `check_only` (yes/no, optional): Only check whether the PDF exists.
+
+    **Results**
+
+    - `exists` (yes/no): True when the order has an invoice PDF.
+    - `file` (text): The PDF, as a workflow file.
+    - `size_bytes` (whole number): The PDF's size.
+    - `warnings` (list): What the step could not do fully or what to check.
+- component_id: steps_purchases
+  type: markdown
+  title: Purchases
+  body: |
+    ### Send a purchase invoice to Centas
+
+    Sends a supplier's invoice with its lines and returns its purchase ID. Centas WS keeps it until the Centas program imports it, so success means Centas WS received it. Centas WS does not check for repeats: sending the same invoice again can create it a second time.
+
+    Action id `send_purchase_invoice` · sends data to Centas WS · Centas WS: `POST /documents/purchase/import`
+
+    **Inputs**
+
+    - `seller_name` (text): The supplier's name (kontrah).
+    - `number` (text): The supplier's invoice number (dok_num).
+    - `date` (date): The invoice date (data). YYYY-MM-DD.
+    - `lines` (list of records): The invoice lines, 1 to 500: code, name, unit, quantity, price without VAT, vat_percent.
+    - `net_total` (decimal, optional): The total without VAT (bepvm_suma). Give the net total and the VAT total (and optionally the total) as on the document: they are checked against the lines within one cent per line and sent as given. Leave them empty to have them computed: each line's net amount rounded to cents, its VAT rounded to cents, summed. Lines with a discount or their own VAT amount need the totals.
+    - `vat_total` (decimal, optional): The VAT amount (pvm_suma).
+    - `total` (decimal, optional): The total with VAT; must be net total + VAT total.
+
+    **Results**
+
+    - `purchase_id` (text): The purchase ID Centas WS returned.
+    - `number` (text): The number sent.
+    - `net_total` (text): The net total sent.
+    - `vat_total` (text): The VAT total sent.
+    - `total` (text): The total sent.
+    - `warnings` (list): What the step could not do fully or what to check.
+
+    ### Send an invoice to another company's Centas
+
+    Sends your sales invoice to the receiving company's Centas WS as their purchase, with its lines and optionally its PDF. With Send e-mail on, Centas WS also e-mails the receiver. Centas WS does not check for repeats: sending the same invoice again can create it a second time.
+
+    Action id `send_invoice_to_company` · sends data to Centas WS · Centas WS: `POST /purchase/import`
+
+    **Inputs**
+
+    - `receiver_company_code` (text, optional): The receiver's company code (gavejas im_kodas).
+    - `receiver_vat_code` (text, optional): The receiver's VAT code (gavejas pvm_kodas).
+    - `receiver_name` (text, optional): The receiver's name (gavejas kontrah).
+    - `receiver_email` (text, optional): The receiver's e-mail (email).
+    - `receiver_country` (text, optional): Country (salis).
+    - `receiver_city` (text, optional): City (miestas).
+    - `receiver_address` (text, optional): Address (adresas).
+    - `receiver_telema_id` (text, optional): Telema ID (telema_id).
+    - `receiver_edisoft_iln` (text, optional): Edisoft ILN (edisoft_iln).
+    - `send_email` (yes/no, optional): Have Centas WS e-mail the receiver about the invoice (send_email). Off unless chosen.
+    - `number` (text): The invoice number (dok_num).
+    - `date` (date): The invoice date (data). YYYY-MM-DD.
+    - `due_date` (date, optional): The payment due date (apmok_iki). YYYY-MM-DD.
+    - `seller_name` (text, optional): Your company's name (dokumentas kontrah).
+    - `document_type` (text, optional): The document type, for example deb (DocType).
+    - `country_code` (text, optional): Country code, for example LT (salis_kodas).
+    - `paid` (yes/no, optional): Already paid (apmoketa).
+    - `remaining_debt` (decimal, optional): Remaining unpaid amount (dok_skola).
+    - `pdf_file` (artifact_handle, optional): The invoice PDF from an earlier step, up to 8 MB (pdf_base64).
+    - `pdf_name` (text, optional): The PDF's file name (pdf_name). Default: the invoice number.
+    - `lines` (list of records): The invoice lines, 1 to 500: code, name, unit, quantity, price without VAT, vat_percent; optionally kind, ean, vat_code.
+    - `net_total` (decimal, optional): The total without VAT (bepvm_suma). Give the net total and the VAT total (and optionally the total) as on the document: they are checked against the lines within one cent per line and sent as given. Leave them empty to have them computed: each line's net amount rounded to cents, its VAT rounded to cents, summed. Lines with a discount or their own VAT amount need the totals.
+    - `vat_total` (decimal, optional): The VAT amount (pvm_suma).
+    - `total` (decimal, optional): The total with VAT; must be net total + VAT total.
+
+    **Results**
+
+    - `number` (text): The number sent.
+    - `net_total` (text): The net total sent.
+    - `vat_total` (text): The VAT total sent.
+    - `total` (text): The total sent.
+    - `email_requested` (yes/no): Whether an e-mail was asked for.
+    - `purchase_rows_created` (whole number): Purchase rows created.
+    - `document_rows_created` (whole number): Document rows created.
+    - `email_sent` (yes/no): Whether Centas WS sent the e-mail.
+    - `warnings` (list): What the step could not do fully or what to check.
+
+    ### Get purchases for a date range
+
+    Reads the purchases of a date range with their rows. With a date range Centas WS leaves its downloaded mark unchanged, so nothing is taken from the queue.
+
+    Action id `get_purchases` · reads only · Centas WS: `GET /purchase/export (from, to)`
+
+    **Inputs**
+
+    - `date_from` (date): The first day. YYYY-MM-DD.
+    - `date_to` (date): The last day. YYYY-MM-DD.
+    - `page` (whole number, optional): The page to read, from 1; pass next_page to continue.
+    - `limit` (whole number, optional): Rows per page, 1 to 500. Default 100.
+
+    **Results**
+
+    - `items` (list of records): The purchases of this page. Fields: `dok_num`, `data`, `apmok_iki`, `kontrah`, `dok_suma`, `pvm_suma`, `bepvm_suma`, `eilute`.
+    - `count` (whole number): How many rows this page holds.
+    - `total` (whole number): How many rows Centas WS returned in all.
+    - `page` (whole number): This page's number.
+    - `has_more` (yes/no): True when more rows follow.
+    - `next_page` (whole number): The page to read next, or null.
+    - `warnings` (list): What the step could not do fully or what to check.
+
+    ### Take new purchases from the Centas WS queue
+
+    Reads the purchases not yet downloaded. Takes them from the Centas WS queue: Centas WS marks what it hands out, so the Centas program will no longer see these records as new. The answer is also saved whole as a workflow file.
+
+    Action id `take_new_purchases` · takes records from the Centas WS queue · Centas WS: `GET /purchase/export`
+
+    **Inputs**
+
+    - none
+
+    **Results**
+
+    - `items` (list of records): The records taken (empty when they do not fit the step output; then they are all in the file). Fields: `dok_num`, `data`, `apmok_iki`, `kontrah`, `dok_suma`, `pvm_suma`, `bepvm_suma`, `eilute`.
+    - `count` (whole number): How many records were taken.
+    - `file` (text): Centas WS's answer, whole, as an XML workflow file.
+    - `warnings` (list): What the step could not do fully or what to check.
+- component_id: steps_payments
+  type: markdown
+  title: Payments
+  body: |
+    ### Send bank and cash payments to Centas
+
+    Sends payments in one batch and returns how many Centas WS created. Centas WS keeps it until the Centas program imports it, so success means Centas WS received it. Centas WS does not check for repeats: sending the same payment again can create it a second time.
+
+    Action id `send_payments` · sends data to Centas WS · Centas WS: `POST /payments/import`
+
+    **Inputs**
+
+    - `payments` (list of records): The payments, 1 to 500: type (BankDeb, CashDeb, BankCred, CashDeb2), date, amount, document_number, details, payer_name; optionally reference, payer_code, receiver, account.
+
+    **Results**
+
+    - `sent` (whole number): How many payments were sent.
+    - `payments_found_xml` (whole number): How many Centas WS found.
+    - `payments_created` (whole number): How many it created.
+    - `warnings` (list): What the step could not do fully or what to check.
+
+    ### Take new payments from the Centas WS queue
+
+    Reads the payments not yet exported, all or of one type. Takes them from the Centas WS queue: Centas WS marks what it hands out, so the Centas program will no longer see these records as new. The answer is also saved whole as a workflow file.
+
+    Action id `take_new_payments` · takes records from the Centas WS queue · Centas WS: `GET /payments/export, /payments/export/{type}`
+
+    **Inputs**
+
+    - `payment_type` (one of BankDeb, CashDeb, BankCred, CashDeb2, optional): Only payments of this type.
+
+    **Results**
+
+    - `items` (list of records): The records taken (empty when they do not fit the step output; then they are all in the file). Fields: `PaymentType`, `Date`, `Amount`, `DocNr`, `RefNr`, `Details`, `RecName`, `RecId`, `Receiver`, `ToAccountNumber`.
+    - `count` (whole number): How many records were taken.
+    - `file` (text): Centas WS's answer, whole, as an XML workflow file.
+    - `warnings` (list): What the step could not do fully or what to check.
+- component_id: steps_products
+  type: markdown
+  title: Products
+  body: |
+    ### Get products
+
+    Reads every product with all its fields, one page at a time. The data is what the Centas program uploaded to Centas WS.
+
+    Action id `get_products` · reads only · Centas WS: `GET /products/export/json/full`
+
+    **Inputs**
+
+    - `page` (whole number, optional): The page to read, from 1; pass next_page to continue.
+    - `limit` (whole number, optional): Rows per page, 1 to 500. Default 100.
+
+    **Results**
+
+    - `items` (list of records): The products of this page. Fields: `kodas`, `kaina`, `savikaina`, `likutis`, `pavadinimas`, `grupe1`, `grupe2`, `grupe3`, `grupe4`, `gamintojas`, `svoris_neto`, `svoris_bruto`, `AnalogProducts`, `RecommendedProducts`, `Nuotrauka`, `aprasymas`, `barkodas`, `uzsak`, `sandel`, `stocks`, `parameters`.
+    - `count` (whole number): How many rows this page holds.
+    - `total` (whole number): How many rows Centas WS returned in all.
+    - `page` (whole number): This page's number.
+    - `has_more` (yes/no): True when more rows follow.
+    - `next_page` (whole number): The page to read next, or null.
+    - `warnings` (list): What the step could not do fully or what to check.
+
+    ### Get a product by code
+
+    Reads one product with all its fields. The data is what the Centas program uploaded to Centas WS.
+
+    Action id `get_product` · reads only · Centas WS: `GET /products/export/json/one`
+
+    **Inputs**
+
+    - `code` (text): The product code (kodas).
+
+    **Results**
+
+    - `found` (yes/no): True when the product exists.
+    - `product` (record): A product: kodas, kaina, savikaina, likutis, pavadinimas, grupe1-4, gamintojas, svoris_neto, svoris_bruto, AnalogProducts, RecommendedProducts, Nuotrauka, aprasymas, barkodas, uzsak, sandel, stocks, parameters. Fields: `kodas`, `kaina`, `savikaina`, `likutis`, `pavadinimas`, `grupe1`, `grupe2`, `grupe3`, `grupe4`, `gamintojas`, `svoris_neto`, `svoris_bruto`, `AnalogProducts`, `RecommendedProducts`, `Nuotrauka`, `aprasymas`, `barkodas`, `uzsak`, `sandel`, `stocks`, `parameters`.
+    - `warnings` (list): What the step could not do fully or what to check.
+
+    ### Get product prices and stock
+
+    Reads products' price, cost, stock and stock by warehouse, optionally of one barcode. The data is what the Centas program uploaded to Centas WS.
+
+    Action id `get_product_stock` · reads only · Centas WS: `GET /products/export/json`
+
+    **Inputs**
+
+    - `barcode` (text, optional): Only the product with this barcode (barkodas).
+    - `page` (whole number, optional): The page to read, from 1; pass next_page to continue.
+    - `limit` (whole number, optional): Rows per page, 1 to 500. Default 100.
+
+    **Results**
+
+    - `items` (list of records): The products of this page. Fields: `kodas`, `kaina`, `savikaina`, `likutis`, `stocks`.
+    - `count` (whole number): How many rows this page holds.
+    - `total` (whole number): How many rows Centas WS returned in all.
+    - `page` (whole number): This page's number.
+    - `has_more` (yes/no): True when more rows follow.
+    - `next_page` (whole number): The page to read next, or null.
+    - `warnings` (list): What the step could not do fully or what to check.
+
+    ### Get product cards with units and VAT rates
+
+    Reads product cards with unit, VAT rate, stock by warehouse and parameters; or one card by its ID. The data is what the Centas program uploaded to Centas WS.
+
+    Action id `get_product_cards` · reads only · Centas WS: `GET /products/export`
+
+    **Inputs**
+
+    - `id` (whole number, optional): Only this product (its ID in Centas WS).
+    - `page` (whole number, optional): The page to read, from 1; pass next_page to continue.
+    - `limit` (whole number, optional): Rows per page, 1 to 500. Default 100.
+
+    **Results**
+
+    - `items` (list of records): The product cards of this page. Fields: `id`, `kodas`, `pavadinimas`, `matovnt`, `kaina`, `pvmtar`, `likutis`, `Stocks`, `ProductParameters`.
+    - `count` (whole number): How many rows this page holds.
+    - `total` (whole number): How many rows Centas WS returned in all.
+    - `page` (whole number): This page's number.
+    - `has_more` (yes/no): True when more rows follow.
+    - `next_page` (whole number): The page to read next, or null.
+    - `warnings` (list): What the step could not do fully or what to check.
+
+    ### Get a product's gallery link
+
+    Returns the link to a product's image gallery.
+
+    Action id `get_product_gallery_link` · reads only · Centas WS: `GET /products/gallery`
+
+    **Inputs**
+
+    - `product_id` (whole number): The product's ID in Centas WS.
+
+    **Results**
+
+    - `link` (text): The gallery's address.
+    - `warnings` (list): What the step could not do fully or what to check.
+
+    ### Send products to Centas
+
+    Sends product cards in one batch; Centas WS creates new ones and updates known ones and returns the counts. Only the fields given are sent. Centas WS does not check for repeats: sending the same product again can create it a second time.
+
+    Action id `send_products` · sends data to Centas WS · Centas WS: `POST /products/import`
+
+    **Inputs**
+
+    - `products` (list of records): The products, 1 to 500: code and any of id, name, unit, price, cost, vat_percent, stock, group1-4, barcode, description, manufacturer, net_weight, gross_weight, analog_products, recommended_products, photo, vat_code, ordered, warehouse, stocks, parameters.
+
+    **Results**
+
+    - `sent` (whole number): How many products were sent.
+    - `products_found_xml` (whole number): How many Centas WS found.
+    - `products_created` (whole number): How many it created.
+    - `products_updated` (whole number): How many it updated.
+    - `codes` (list): The product codes sent, in order.
+    - `warnings` (list): What the step could not do fully or what to check.
+- component_id: steps_clients_and_suppliers
+  type: markdown
+  title: Clients and suppliers
+  body: |
+    ### Send clients and suppliers to Centas
+
+    Sends clients and suppliers in one batch; Centas WS creates new ones and updates known ones. When branches are given, Centas WS may delete branches it has that are not among them (it reports how many). Centas WS does not check for repeats: sending the same client again can create it a second time.
+
+    Action id `send_contrahents` · sends data to Centas WS · Centas WS: `POST /contrahents/import`
+
+    **Inputs**
+
+    - `contrahents` (list of records): 1 to 500: name and any of id, company_code, vat_code, country, city, address, email, phone, iban, is_buyer, is_supplier, debt, telema_id, edisoft_iln, branches [{name, address, country, city}].
+
+    **Results**
+
+    - `sent` (whole number): How many were sent.
+    - `contrahents_found_xml` (whole number): How many Centas WS found.
+    - `contrahents_created` (whole number): How many it created.
+    - `contrahents_updated` (whole number): How many it updated.
+    - `branches_created` (whole number): Branches created.
+    - `branches_updated` (whole number): Branches updated.
+    - `branches_deleted` (whole number): Branches deleted.
+    - `warnings` (list): What the step could not do fully or what to check.
+
+    ### Get clients and suppliers
+
+    Reads clients and suppliers with their branches; or one by its ID. The data is what the Centas program uploaded to Centas WS.
+
+    Action id `get_contrahents` · reads only · Centas WS: `GET /contrahents/export`
+
+    **Inputs**
+
+    - `id` (whole number, optional): Only this client or supplier (its ID in Centas WS).
+    - `page` (whole number, optional): The page to read, from 1; pass next_page to continue.
+    - `limit` (whole number, optional): Rows per page, 1 to 500. Default 100.
+
+    **Results**
+
+    - `items` (list of records): The clients and suppliers of this page. Fields: `id`, `pavadinimas`, `imones_kodas`, `pvm_kodas`, `salis`, `miestas`, `adresas`, `email`, `telefonas`, `iban_nr`, `pirkejas`, `tiekejas`, `skola`, `padaliniai`.
+    - `count` (whole number): How many rows this page holds.
+    - `total` (whole number): How many rows Centas WS returned in all.
+    - `page` (whole number): This page's number.
+    - `has_more` (yes/no): True when more rows follow.
+    - `next_page` (whole number): The page to read next, or null.
+    - `warnings` (list): What the step could not do fully or what to check.
+
+    ### Find a company's name by its code
+
+    Looks a company up by its registration code and returns its name.
+
+    Action id `find_company_by_code` · reads only · Centas WS: `GET /contrahents/search`
+
+    **Inputs**
+
+    - `code` (text): The company registration code.
+
+    **Results**
+
+    - `found` (yes/no): True when a company was found.
+    - `name` (text): The company's name.
+    - `warnings` (list): What the step could not do fully or what to check.
+- component_id: steps_consignments
+  type: markdown
+  title: Consignments
+  body: |
+    ### Send a consignment note to Centas
+
+    Sends a consignment note (waybill) with its lines. Centas WS does not check for repeats: sending the same consignment note again can create it a second time.
+
+    Action id `send_consignment` · sends data to Centas WS · Centas WS: `POST /consignments/import`
+
+    **Inputs**
+
+    - `document_uid` (text): The consignment's unique ID (DocumentUID).
+    - `document_number` (text): The related document number (DocumentNumber).
+    - `document_date` (date): The document date (DocumentDate). YYYY-MM-DD.
+    - `estimated_arrival` (date, optional): Estimated time of arrival (EstimatedTimeOfArrival). YYYY-MM-DD.
+    - `consignee_name` (text): The consignee (ConsigneeName).
+    - `consignee_code` (text, optional): The consignee's registration number (ConsigneeRegistrationNumber).
+    - `lines` (list of records): 1 to 500: description, unit, quantity.
+
+    **Results**
+
+    - `lines_sent` (whole number): How many lines were sent.
+    - `consignment_rows_created` (whole number): How many rows Centas WS created.
+    - `warnings` (list): What the step could not do fully or what to check.
+- component_id: steps_connection
+  type: markdown
+  title: Connection
+  body: |
+    ### Test the connection
+
+    Checks the WS key and returns until when it is valid; warns 30 days before it expires.
+
+    Action id `test_connection` · reads only · Centas WS: `GET /verify`
+
+    **Inputs**
+
+    - none
+
+    **Results**
+
+    - `connected` (yes/no): True when Centas WS accepted the key.
+    - `valid_until` (text): Until when the key is valid.
+    - `days_left` (whole number): Days until it expires.
+    - `warnings` (list): What the step could not do fully or what to check.
+
+    ### Get counts of new documents
+
+    Counts the new invoices, orders, purchases and payments waiting in Centas WS, without taking them, and the key's expiry. Works with an expired key too.
+
+    Action id `get_statistics` · reads only · Centas WS: `GET /statistics`
+
+    **Inputs**
+
+    - none
+
+    **Results**
+
+    - `new_invoices` (whole number): New invoices.
+    - `new_orders` (whole number): New orders.
+    - `new_purchases` (whole number): New purchases.
+    - `new_payments_bd` (whole number): New bank debit payments.
+    - `new_payments_cd` (whole number): New cash debit payments.
+    - `new_payments_cd2` (whole number): New cash debit 2 payments.
+    - `new_payments_bc` (whole number): New bank credit payments.
+    - `token_valid_until` (text): Until when the key is valid.
+    - `warnings` (list): What the step could not do fully or what to check.
+
+    ### Check that Centas WS is running
+
+    Asks Centas WS whether it is running; uses no key.
+
+    Action id `check_service` · reads only · Centas WS: `GET /test`
+
+    **Inputs**
+
+    - none
+
+    **Results**
+
+    - `running` (yes/no): True when Centas WS answered ok.
+    - `status` (text): The status Centas WS gave.
     - `warnings` (list): What the step could not do fully or what to check.

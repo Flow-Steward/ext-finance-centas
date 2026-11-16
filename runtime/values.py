@@ -1,9 +1,9 @@
 """Step inputs read strictly, and values written the way Centas WS's examples show them.
 
 Numbers are ``Decimal`` from the request to the wire (``main.py`` reads every
-number with a point as Decimal), never float. Dates come in as ISO dates
-(YYYY-MM-DD) and go out as YYYY.MM.DD, the form of the documentation's payment
-example and of the Centas program.
+number with a point as Decimal), never float. Dates are ISO dates (YYYY-MM-DD) in
+and out, as the specification writes them; dates read from Centas WS may also be
+written YYYY.MM.DD (the purchase export example).
 """
 
 from __future__ import annotations
@@ -110,7 +110,7 @@ def iso_date(value: Any, what: str) -> dt.date:
 
 
 def wire_date(value: dt.date) -> str:
-    return value.strftime("%Y.%m.%d")
+    return value.isoformat()
 
 
 def date_from_wire(text: str) -> str | None:

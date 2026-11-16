@@ -29,8 +29,19 @@ def test_a_test_mode_write_answers_without_network() -> None:
         {
             "number": "S-1",
             "date": "2026-11-16",
+            "due_date": "2026-12-16",
             "buyer_name": "UAB",
-            "lines": [{"code": "A", "quantity": 1, "price": 10.5, "vat_percent": 21}],
+            "cost": 0,
+            "lines": [
+                {
+                    "code": "A",
+                    "name": "A",
+                    "unit": "vnt",
+                    "quantity": 1,
+                    "price": 10.5,
+                    "vat_percent": 21,
+                }
+            ],
         },
         test_mode=True,
     )

@@ -7,14 +7,8 @@ forms:
   - name: number
     label: Invoice number
     widget_type: text
-    required: false
-    help_text: The invoice number (dok_num). Leave empty, or write auto, to have Centas number it from
-      its free invoice forms; then give the transaction ID.
-  - name: transaction_id
-    label: Transaction ID
-    widget_type: text
-    required: false
-    help_text: Needed for an automatic number from Centas's invoice forms (trans_id).
+    required: true
+    help_text: The invoice number (dok_num), or auto for Centas's automatic numbering.
   - name: date
     label: Date
     widget_type: text
@@ -23,48 +17,104 @@ forms:
   - name: due_date
     label: Due date
     widget_type: text
-    required: false
-    help_text: The payment term (apmok_iki). YYYY-MM-DD.
+    required: true
+    help_text: The payment due date (apmok_iki). YYYY-MM-DD.
   - name: buyer_name
     label: Buyer name
     widget_type: text
     required: true
     help_text: The buyer's name (pirkejas).
-  - name: buyer_code
-    label: Buyer code
+  - name: cost
+    label: Cost
+    widget_type: text
+    required: true
+    help_text: The document's cost price total (savikaina).
+  - name: lines
+    label: Lines
+    widget_type: json
+    required: true
+    help_text: 'The invoice lines, 1 to 500: code, name, unit, quantity, price without VAT, vat_percent;
+      optionally kind, ean, vat_code, income_account, project, vat_amount, discount_percent, discount,
+      hs_code, country_origin, material.'
+    placeholder: '[{"code":"PRD-001","name":"Widget A","unit":"vnt","quantity":10,"price":"5.00","vat_percent":21}]'
+  - name: net_total
+    label: Net total
     widget_type: text
     required: false
-    help_text: The buyer's code in your systems (kl_kodas).
+    help_text: 'The total without VAT (bepvm_suma). Give the net total and the VAT total (and optionally
+      the total) as on the document: they are checked against the lines within one cent per line and sent
+      as given. Leave them empty to have them computed: each line''s net amount rounded to cents, its
+      VAT rounded to cents, summed. Lines with a discount or their own VAT amount need the totals.'
+  - name: vat_total
+    label: VAT total
+    widget_type: text
+    required: false
+    help_text: The VAT amount (pvm_suma).
+  - name: total
+    label: Total
+    widget_type: text
+    required: false
+    help_text: The total with VAT; must be net total + VAT total.
   - name: buyer_company_code
     label: Buyer company code
     widget_type: text
     required: false
-    help_text: The buyer's company or personal code (im_kodas).
+    help_text: The buyer's company code (im_kodas).
   - name: buyer_vat_code
     label: Buyer VAT code
     widget_type: text
     required: false
     help_text: The buyer's VAT code (pvm_kodas).
-  - name: buyer_email
-    label: Buyer e-mail
-    widget_type: text
-    required: false
-    help_text: The buyer's e-mail (email).
-  - name: buyer_address
-    label: Buyer address
-    widget_type: text
-    required: false
-    help_text: The buyer's address (adresas).
-  - name: buyer_city
-    label: Buyer city
-    widget_type: text
-    required: false
-    help_text: The buyer's city (miestas).
   - name: buyer_country
     label: Buyer country
     widget_type: text
     required: false
     help_text: The buyer's country (salis).
+  - name: buyer_city
+    label: Buyer city
+    widget_type: text
+    required: false
+    help_text: The buyer's city (miestas).
+  - name: buyer_address
+    label: Buyer address
+    widget_type: text
+    required: false
+    help_text: The buyer's address (adresas).
+  - name: buyer_email
+    label: Buyer e-mail
+    widget_type: text
+    required: false
+    help_text: The buyer's e-mail (email).
+  - name: number_series
+    label: Number series
+    widget_type: text
+    required: false
+    help_text: The document number series (dok_num_series).
+  - name: order_number
+    label: Order number
+    widget_type: text
+    required: false
+    help_text: The related order number (uzsaknr).
+  - name: check_order
+    label: Check order
+    widget_type: text
+    required: false
+    help_text: Check the related order (check_order).
+  - name: document_type
+    label: Document type
+    widget_type: text
+    required: false
+    help_text: The document type (type).
+  - name: transaction_id
+    label: Transaction ID
+    widget_type: text
+    required: false
+    help_text: Transaction ID for a number from Centas's invoice forms (trans_id).
+  - name: buyer_code
+    label: Buyer code
+    widget_type: text
+    required: false
+    help_text: The buyer's code in your systems (kl_kodas).
   - name: buyer_eu_type
     label: Buyer EU type
     widget_type: select
@@ -81,67 +131,32 @@ forms:
     label: Buyer group
     widget_type: text
     required: false
-    help_text: The group a new buyer is put in (grupe).
-  - name: lines
-    label: Lines
-    widget_type: json
-    required: true
-    help_text: 'The invoice lines, 1 to 500: code, name, unit, quantity, price without VAT, vat_percent,
-      vat_code, income_account, project.'
-    placeholder: '[{"code":"11222","name":"Kompiuteris","unit":"vnt.","quantity":2,"price":1050,"vat_percent":21}]'
-  - name: net_total
-    label: Net total
-    widget_type: text
-    required: false
-    help_text: 'The total without VAT (bepvm_suma). Give the net total and the VAT total (and optionally
-      the total) as on the document: they are checked against the lines within one cent per line and sent
-      as given. Leave them empty to have them computed: each line''s net amount rounded to cents, its
-      VAT rounded to cents, summed.'
-  - name: vat_total
-    label: VAT total
-    widget_type: text
-    required: false
-    help_text: The VAT amount (pvm_suma).
-  - name: total
-    label: Total
-    widget_type: text
-    required: false
-    help_text: The total with VAT; must be net total + VAT total.
-  - name: cost
-    label: Cost
-    widget_type: text
-    required: false
-    help_text: The document's cost price (savikaina).
+    help_text: The group of a new buyer (grupe).
   - name: vat_payable_account
     label: VAT payable account
     widget_type: text
     required: false
-    help_text: The VAT payable account, digits (sask_moketpvm).
+    help_text: VAT payable account, digits (sask_moketpvm).
   - name: receivable_account
     label: Receivable account
     widget_type: text
     required: false
-    help_text: The buyer debt account (sask_pirkskol).
+    help_text: Buyer debt account (sask_pirkskol).
   - name: income_account
     label: Income account
     widget_type: text
     required: false
-    help_text: The income account, digits (sask_pajamos).
+    help_text: Income account, digits (sask_pajamos).
   - name: project
     label: Project
     widget_type: text
     required: false
-    help_text: The project or cost centre (projektas).
-  - name: order_number
-    label: Order number
-    widget_type: text
-    required: false
-    help_text: The number of the order this invoice is for (uzsaknr).
+    help_text: Project or cost centre (projektas).
   - name: operation_description
     label: Operation description
     widget_type: text
     required: false
-    help_text: An extra description of the operation (oper_apras).
+    help_text: Extra description of the operation (oper_apras).
   - name: note
     label: Note
     widget_type: textarea
@@ -151,7 +166,7 @@ forms:
     label: Issued by
     widget_type: text
     required: false
-    help_text: Who issued the invoice (israse_asmuo).
+    help_text: Who issued it (israse_asmuo).
   - name: issued_by_position
     label: Issuer's position
     widget_type: text
@@ -161,27 +176,94 @@ forms:
     label: Intrastat transport
     widget_type: text
     required: false
-    help_text: Transport code for Intrastat (intrs_transprusis).
+    help_text: Intrastat transport code (intrs_transprusis).
   - name: intrastat_delivery_terms
     label: Intrastat delivery terms
     widget_type: text
     required: false
-    help_text: Delivery terms code for Intrastat (intrs_pristsal).
+    help_text: Intrastat delivery terms code (intrs_pristsal).
   - name: intrastat_transaction
     label: Intrastat transaction
     widget_type: text
     required: false
-    help_text: Transaction code for Intrastat (intrs_sandoris).
+    help_text: Intrastat transaction code (intrs_sandoris).
   - name: intrastat_county
     label: Intrastat county
     widget_type: text
     required: false
-    help_text: County code for Intrastat (intrs_apskritis).
+    help_text: Intrastat county code (intrs_apskritis).
   - name: intrastat_eu_country
     label: Intrastat EU country
     widget_type: text
     required: false
-    help_text: EU country code for Intrastat (intrs_eusalis).
+    help_text: Intrastat EU country code (intrs_eusalis).
+- operation_id: get_sales_document
+  title: Get a sales document by number
+  fields:
+  - name: number
+    label: Document number
+    widget_type: text
+    required: true
+    help_text: The document number.
+- operation_id: get_sales_documents
+  title: Get sales documents by date or unpaid
+  fields:
+  - name: date_from
+    label: From date
+    widget_type: text
+    required: false
+    help_text: Only documents on or after this date. YYYY-MM-DD.
+  - name: date_to
+    label: To date
+    widget_type: text
+    required: false
+    help_text: Only documents on or before this date. YYYY-MM-DD.
+  - name: unpaid
+    label: Unpaid only
+    widget_type: boolean
+    required: false
+    help_text: Only unpaid documents (apmoketa = 0).
+  - name: page
+    label: Page
+    widget_type: number
+    required: false
+    help_text: The page to read, from 1; pass next_page to continue.
+  - name: limit
+    label: Rows
+    widget_type: number
+    required: false
+    help_text: Rows per page, 1 to 500. Default 100.
+- operation_id: take_new_sales_documents
+  title: Take new sales documents from the Centas WS queue
+  fields: []
+- operation_id: update_sales_documents
+  title: Update sales documents' payment status
+  fields:
+  - name: documents
+    label: Documents
+    widget_type: json
+    required: true
+    help_text: 'The documents, 1 to 500: type, number, date and at least one of downloaded, paid, remaining_debt.'
+    placeholder: '[{"type":"deb","number":"DOK-001","date":"2024-01-01","paid":true,"remaining_debt":"0.00"}]'
+- operation_id: record_document_payments
+  title: Record payments against sales documents
+  fields:
+  - name: documents
+    label: Documents
+    widget_type: json
+    required: true
+    help_text: 'The documents, 1 to 500: type, number, date, paid_sum, paid_in_full, customer_id and payments
+      [{date, number, description, total}].'
+    placeholder: '[{"type":"deb","number":"INV-001","date":"2024-01-15","paid_sum":"121.00","paid_in_full":true,"payments":[{"date":"2024-01-20","number":"PAY-001","total":"121.00"}]}]'
+- operation_id: delete_sales_documents
+  title: Delete sales documents
+  fields:
+  - name: documents
+    label: Documents
+    widget_type: json
+    required: true
+    help_text: 'The documents to delete, 1 to 50: type, number, date.'
+    placeholder: '[{"type":"deb","number":"DOK-001","date":"2024-01-01"}]'
 - operation_id: send_order
   title: Send a customer order to Centas
   fields:
@@ -189,7 +271,7 @@ forms:
     label: Order number
     widget_type: text
     required: true
-    help_text: The order number (uzsak_num).
+    help_text: The order number, unique (uzsak_num).
   - name: date
     label: Order date
     widget_type: text
@@ -200,66 +282,126 @@ forms:
     widget_type: text
     required: true
     help_text: The customer's name (uzsakovas).
-  - name: customer_company_code
-    label: Customer company code
+  - name: lines
+    label: Lines
+    widget_type: json
+    required: true
+    help_text: 'The order lines, 1 to 500: code, name, unit, quantity, price without VAT, vat_percent,
+      supplier_code.'
+    placeholder: '[{"code":"PRD-001","name":"Widget A","unit":"vnt","quantity":10,"price":"5.00","vat_percent":21}]'
+  - name: net_total
+    label: Net total
     widget_type: text
     required: false
-    help_text: The customer's company code (im_kodas).
-  - name: customer_vat_code
-    label: Customer VAT code
+    help_text: 'The total without VAT (bepvm_suma). Give the net total and the VAT total (and optionally
+      the total) as on the document: they are checked against the lines within one cent per line and sent
+      as given. Leave them empty to have them computed: each line''s net amount rounded to cents, its
+      VAT rounded to cents, summed. Lines with a discount or their own VAT amount need the totals.'
+  - name: vat_total
+    label: VAT total
     widget_type: text
     required: false
-    help_text: The customer's VAT code (pvm_kodas).
-  - name: customer_email
-    label: Customer e-mail
+    help_text: The VAT amount (pvm_suma).
+  - name: total
+    label: Total
     widget_type: text
     required: false
-    help_text: The customer's e-mail (email).
-  - name: customer_phone
-    label: Customer phone
-    widget_type: text
-    required: false
-    help_text: The customer's phone (tel).
-  - name: customer_address
-    label: Customer address
-    widget_type: text
-    required: false
-    help_text: The customer's address (adresas).
-  - name: customer_city
-    label: Customer city
-    widget_type: text
-    required: false
-    help_text: The customer's city (miestas).
-  - name: postal_code
-    label: Postal code
-    widget_type: text
-    required: false
-    help_text: The postal code (pasto_kodas).
-  - name: customer_note
-    label: Customer note
-    widget_type: textarea
-    required: false
-    help_text: The customer's note (uzsakovas_pastaba).
-  - name: receivable_account
-    label: Receivable account
-    widget_type: text
-    required: false
-    help_text: The customer debt account (pirk_skolsask).
-  - name: warehouse
-    label: Warehouse
-    widget_type: text
-    required: false
-    help_text: The warehouse (sandelis).
-  - name: execution_date
-    label: Execution date
-    widget_type: text
-    required: false
-    help_text: When to carry it out (vykd_data). YYYY-MM-DD.
+    help_text: The order total with VAT; must be net total + VAT total (uzsak_suma).
   - name: delivery_date
     label: Delivery date
     widget_type: text
     required: false
     help_text: The delivery date (pristat_data). YYYY-MM-DD.
+  - name: carrier
+    label: Carrier
+    widget_type: text
+    required: false
+    help_text: The carrier (vezejas).
+  - name: comment
+    label: Comment
+    widget_type: textarea
+    required: false
+    help_text: A comment (komentaras).
+  - name: customer_note
+    label: Customer note
+    widget_type: textarea
+    required: false
+    help_text: The customer's note (uzsakovas_pastaba).
+  - name: delivery_branch
+    label: Delivery branch
+    widget_type: text
+    required: false
+    help_text: The delivery branch (uzsak_padalinys).
+  - name: delivery_branch_gln
+    label: Delivery branch GLN
+    widget_type: text
+    required: false
+    help_text: The delivery branch's GLN code (uzsak_padalinys_gln).
+  - name: delivery_branch_iln
+    label: Delivery branch ILN
+    widget_type: text
+    required: false
+    help_text: The delivery branch's ILN code (uzsak_padalinys_iln).
+  - name: customer_iln
+    label: Customer ILN
+    widget_type: text
+    required: false
+    help_text: The customer's ILN code (uzsak_iln).
+  - name: customer_company_code
+    label: Customer company code
+    widget_type: text
+    required: false
+    help_text: Company registration code (im_kodas).
+  - name: customer_vat_code
+    label: Customer VAT code
+    widget_type: text
+    required: false
+    help_text: VAT code (pvm_kodas).
+  - name: customer_country
+    label: Customer country
+    widget_type: text
+    required: false
+    help_text: Country (salis).
+  - name: customer_city
+    label: Customer city
+    widget_type: text
+    required: false
+    help_text: City (miestas).
+  - name: customer_address
+    label: Customer address
+    widget_type: text
+    required: false
+    help_text: Address (adresas).
+  - name: customer_email
+    label: Customer e-mail
+    widget_type: text
+    required: false
+    help_text: E-mail (email).
+  - name: customer_phone
+    label: Customer phone
+    widget_type: text
+    required: false
+    help_text: Phone (tel).
+  - name: postal_code
+    label: Postal code
+    widget_type: text
+    required: false
+    help_text: Postal code (pasto_kodas).
+  - name: receivable_account
+    label: Receivable account
+    widget_type: text
+    required: false
+    help_text: Customer debt account (pirk_skolsask).
+  - name: warehouse
+    label: Warehouse
+    widget_type: text
+    required: false
+    help_text: Warehouse (sandelis).
+  - name: execution_date
+    label: Execution date
+    widget_type: text
+    required: false
+    help_text: When to carry it out (vykd_data). YYYY-MM-DD.
   - name: payment_date
     label: Payment date
     widget_type: text
@@ -275,31 +417,22 @@ forms:
     widget_type: text
     required: false
     help_text: The departure date (isvyk_data). YYYY-MM-DD.
-  - name: lines
-    label: Lines
-    widget_type: json
+- operation_id: take_new_orders
+  title: Take new orders from the Centas WS queue
+  fields: []
+- operation_id: get_order_invoice_pdf
+  title: Get the invoice PDF of an order
+  fields:
+  - name: order_number
+    label: Order number
+    widget_type: text
     required: true
-    help_text: 'The order lines, 1 to 500: code, supplier_code, name, unit, quantity, price without VAT,
-      vat_percent.'
-    placeholder: '[{"code":"11222","name":"Kompiuteris","unit":"vnt.","quantity":2,"price":1050,"vat_percent":21}]'
-  - name: net_total
-    label: Net total
-    widget_type: text
+    help_text: The order number.
+  - name: check_only
+    label: Check only
+    widget_type: boolean
     required: false
-    help_text: 'The order total without VAT (bepvm_suma). Give the net total and the VAT total (and optionally
-      the total) as on the document: they are checked against the lines within one cent per line and sent
-      as given. Leave them empty to have them computed: each line''s net amount rounded to cents, its
-      VAT rounded to cents, summed.'
-  - name: vat_total
-    label: VAT total
-    widget_type: text
-    required: false
-    help_text: The order's VAT (pvm_suma).
-  - name: total
-    label: Total
-    widget_type: text
-    required: false
-    help_text: The order total with VAT; must be net total + VAT total (uzsak_suma).
+    help_text: Only check whether the PDF exists.
 - operation_id: send_purchase_invoice
   title: Send a purchase invoice to Centas
   fields:
@@ -307,7 +440,7 @@ forms:
     label: Seller name
     widget_type: text
     required: true
-    help_text: The seller's name (kontrah).
+    help_text: The supplier's name (kontrah).
   - name: number
     label: Invoice number
     widget_type: text
@@ -322,9 +455,8 @@ forms:
     label: Lines
     widget_type: json
     required: true
-    help_text: 'The invoice lines, 1 to 500: code, name, unit, quantity, price without VAT, vat_percent,
-      vat_code, project.'
-    placeholder: '[{"code":"11222","name":"Kompiuteris","unit":"vnt.","quantity":2,"price":1050,"vat_percent":21}]'
+    help_text: 'The invoice lines, 1 to 500: code, name, unit, quantity, price without VAT, vat_percent.'
+    placeholder: '[{"code":"PRD-001","name":"Widget A","unit":"vnt","quantity":10,"price":"5.00","vat_percent":21}]'
   - name: net_total
     label: Net total
     widget_type: text
@@ -332,7 +464,7 @@ forms:
     help_text: 'The total without VAT (bepvm_suma). Give the net total and the VAT total (and optionally
       the total) as on the document: they are checked against the lines within one cent per line and sent
       as given. Leave them empty to have them computed: each line''s net amount rounded to cents, its
-      VAT rounded to cents, summed.'
+      VAT rounded to cents, summed. Lines with a discount or their own VAT amount need the totals.'
   - name: vat_total
     label: VAT total
     widget_type: text
@@ -343,35 +475,147 @@ forms:
     widget_type: text
     required: false
     help_text: The total with VAT; must be net total + VAT total.
-- operation_id: send_payments
-  title: Send bank payments to Centas
+- operation_id: send_invoice_to_company
+  title: Send an invoice to another company's Centas
   fields:
-  - name: payments
-    label: Payments
+  - name: receiver_company_code
+    label: Receiver company code
+    widget_type: text
+    required: false
+    help_text: The receiver's company code (gavejas im_kodas).
+  - name: receiver_vat_code
+    label: Receiver VAT code
+    widget_type: text
+    required: false
+    help_text: The receiver's VAT code (gavejas pvm_kodas).
+  - name: receiver_name
+    label: Receiver name
+    widget_type: text
+    required: false
+    help_text: The receiver's name (gavejas kontrah).
+  - name: receiver_email
+    label: Receiver e-mail
+    widget_type: text
+    required: false
+    help_text: The receiver's e-mail (email).
+  - name: receiver_country
+    label: Receiver country
+    widget_type: text
+    required: false
+    help_text: Country (salis).
+  - name: receiver_city
+    label: Receiver city
+    widget_type: text
+    required: false
+    help_text: City (miestas).
+  - name: receiver_address
+    label: Receiver address
+    widget_type: text
+    required: false
+    help_text: Address (adresas).
+  - name: receiver_telema_id
+    label: Receiver Telema ID
+    widget_type: text
+    required: false
+    help_text: Telema ID (telema_id).
+  - name: receiver_edisoft_iln
+    label: Receiver Edisoft ILN
+    widget_type: text
+    required: false
+    help_text: Edisoft ILN (edisoft_iln).
+  - name: send_email
+    label: Send e-mail
+    widget_type: boolean
+    required: false
+    help_text: Have Centas WS e-mail the receiver about the invoice (send_email). Off unless chosen.
+  - name: number
+    label: Invoice number
+    widget_type: text
+    required: true
+    help_text: The invoice number (dok_num).
+  - name: date
+    label: Date
+    widget_type: text
+    required: true
+    help_text: The invoice date (data). YYYY-MM-DD.
+  - name: due_date
+    label: Due date
+    widget_type: text
+    required: false
+    help_text: The payment due date (apmok_iki). YYYY-MM-DD.
+  - name: seller_name
+    label: Seller name
+    widget_type: text
+    required: false
+    help_text: Your company's name (dokumentas kontrah).
+  - name: document_type
+    label: Document type
+    widget_type: text
+    required: false
+    help_text: The document type, for example deb (DocType).
+  - name: country_code
+    label: Country code
+    widget_type: text
+    required: false
+    help_text: Country code, for example LT (salis_kodas).
+  - name: paid
+    label: Paid
+    widget_type: boolean
+    required: false
+    help_text: Already paid (apmoketa).
+  - name: remaining_debt
+    label: Remaining debt
+    widget_type: text
+    required: false
+    help_text: Remaining unpaid amount (dok_skola).
+  - name: pdf_file
+    label: PDF
+    widget_type: artifact_picker
+    required: false
+    help_text: The invoice PDF from an earlier step, up to 8 MB (pdf_base64).
+  - name: pdf_name
+    label: PDF name
+    widget_type: text
+    required: false
+    help_text: 'The PDF''s file name (pdf_name). Default: the invoice number.'
+  - name: lines
+    label: Lines
     widget_type: json
     required: true
-    help_text: 'The payments, 1 to 500: type (for example BankDeb), date, amount, document_number, reference,
-      details, payer_name, payer_code, account.'
-    placeholder: '[{"type":"BankDeb","date":"2026-01-15","amount":"123.23","reference":"ABC001","payer_name":"UAB
-      Moketojas"}]'
-- operation_id: get_payments
-  title: Get payments
+    help_text: 'The invoice lines, 1 to 500: code, name, unit, quantity, price without VAT, vat_percent;
+      optionally kind, ean, vat_code.'
+    placeholder: '[{"code":"PRD-001","name":"Widget A","unit":"vnt","quantity":10,"price":"5.00","vat_percent":21}]'
+  - name: net_total
+    label: Net total
+    widget_type: text
+    required: false
+    help_text: 'The total without VAT (bepvm_suma). Give the net total and the VAT total (and optionally
+      the total) as on the document: they are checked against the lines within one cent per line and sent
+      as given. Leave them empty to have them computed: each line''s net amount rounded to cents, its
+      VAT rounded to cents, summed. Lines with a discount or their own VAT amount need the totals.'
+  - name: vat_total
+    label: VAT total
+    widget_type: text
+    required: false
+    help_text: The VAT amount (pvm_suma).
+  - name: total
+    label: Total
+    widget_type: text
+    required: false
+    help_text: The total with VAT; must be net total + VAT total.
+- operation_id: get_purchases
+  title: Get purchases for a date range
   fields:
   - name: date_from
     label: From date
     widget_type: text
-    required: false
-    help_text: Only payments on or after this date. YYYY-MM-DD.
+    required: true
+    help_text: The first day. YYYY-MM-DD.
   - name: date_to
     label: To date
     widget_type: text
-    required: false
-    help_text: Only payments on or before this date. YYYY-MM-DD.
-  - name: reference
-    label: Reference
-    widget_type: text
-    required: false
-    help_text: Only the payment with this reference.
+    required: true
+    help_text: The last day. YYYY-MM-DD.
   - name: page
     label: Page
     widget_type: number
@@ -382,22 +626,82 @@ forms:
     widget_type: number
     required: false
     help_text: Rows per page, 1 to 500. Default 100.
-- operation_id: send_products
-  title: Send products to Centas
+- operation_id: take_new_purchases
+  title: Take new purchases from the Centas WS queue
+  fields: []
+- operation_id: send_payments
+  title: Send bank and cash payments to Centas
   fields:
-  - name: products
-    label: Products
+  - name: payments
+    label: Payments
     widget_type: json
     required: true
-    help_text: 'The products, 1 to 500: code, id, name, unit, price, vat_percent, stock, group1-3, barcode,
-      description, photo, stocks [{warehouse_id, warehouse_name, quantity}], parameters [{name, value}].'
-    placeholder: '[{"code":"C001","name":"Programa nr. 1","unit":"vnt.","price":"100.00","vat_percent":21}]'
+    help_text: 'The payments, 1 to 500: type (BankDeb, CashDeb, BankCred, CashDeb2), date, amount, document_number,
+      details, payer_name; optionally reference, payer_code, receiver, account.'
+    placeholder: '[{"type":"BankDeb","date":"2024-01-15","amount":"121.00","document_number":"PAY-001","details":"Payment
+      for INV-001","payer_name":"UAB Customer"}]'
+- operation_id: take_new_payments
+  title: Take new payments from the Centas WS queue
+  fields:
+  - name: payment_type
+    label: Payment type
+    widget_type: select
+    required: false
+    help_text: Only payments of this type.
+    options:
+    - label: BankDeb
+      value: BankDeb
+    - label: CashDeb
+      value: CashDeb
+    - label: BankCred
+      value: BankCred
+    - label: CashDeb2
+      value: CashDeb2
 - operation_id: get_products
   title: Get products
   fields:
+  - name: page
+    label: Page
+    widget_type: number
+    required: false
+    help_text: The page to read, from 1; pass next_page to continue.
+  - name: limit
+    label: Rows
+    widget_type: number
+    required: false
+    help_text: Rows per page, 1 to 500. Default 100.
+- operation_id: get_product
+  title: Get a product by code
+  fields:
+  - name: code
+    label: Product code
+    widget_type: text
+    required: true
+    help_text: The product code (kodas).
+- operation_id: get_product_stock
+  title: Get product prices and stock
+  fields:
+  - name: barcode
+    label: Barcode
+    widget_type: text
+    required: false
+    help_text: Only the product with this barcode (barkodas).
+  - name: page
+    label: Page
+    widget_type: number
+    required: false
+    help_text: The page to read, from 1; pass next_page to continue.
+  - name: limit
+    label: Rows
+    widget_type: number
+    required: false
+    help_text: Rows per page, 1 to 500. Default 100.
+- operation_id: get_product_cards
+  title: Get product cards with units and VAT rates
+  fields:
   - name: id
     label: Product ID
-    widget_type: text
+    widget_type: number
     required: false
     help_text: Only this product (its ID in Centas WS).
   - name: page
@@ -410,32 +714,43 @@ forms:
     widget_type: number
     required: false
     help_text: Rows per page, 1 to 500. Default 100.
-- operation_id: find_product
-  title: Find a product by code or barcode
+- operation_id: get_product_gallery_link
+  title: Get a product's gallery link
   fields:
-  - name: code
-    label: Code
-    widget_type: text
-    required: false
-    help_text: The product code, exactly.
-  - name: barcode
-    label: Barcode
-    widget_type: text
-    required: false
-    help_text: Or the barcode, exactly.
-- operation_id: get_stock_levels
-  title: Get stock levels
+  - name: product_id
+    label: Product ID
+    widget_type: number
+    required: true
+    help_text: The product's ID in Centas WS.
+- operation_id: send_products
+  title: Send products to Centas
   fields:
-  - name: code
-    label: Code
-    widget_type: text
+  - name: products
+    label: Products
+    widget_type: json
+    required: true
+    help_text: 'The products, 1 to 500: code and any of id, name, unit, price, cost, vat_percent, stock,
+      group1-4, barcode, description, manufacturer, net_weight, gross_weight, analog_products, recommended_products,
+      photo, vat_code, ordered, warehouse, stocks, parameters.'
+    placeholder: '[{"code":"PRD-001","name":"Widget A","unit":"vnt","price":"10.00","vat_percent":21}]'
+- operation_id: send_contrahents
+  title: Send clients and suppliers to Centas
+  fields:
+  - name: contrahents
+    label: Clients and suppliers
+    widget_type: json
+    required: true
+    help_text: '1 to 500: name and any of id, company_code, vat_code, country, city, address, email, phone,
+      iban, is_buyer, is_supplier, debt, telema_id, edisoft_iln, branches [{name, address, country, city}].'
+    placeholder: '[{"name":"UAB Partner","company_code":"123456789","vat_code":"LT123456789","is_buyer":true}]'
+- operation_id: get_contrahents
+  title: Get clients and suppliers
+  fields:
+  - name: id
+    label: ID
+    widget_type: number
     required: false
-    help_text: Only this product code.
-  - name: warehouse_id
-    label: Warehouse ID
-    widget_type: text
-    required: false
-    help_text: Only this warehouse.
+    help_text: Only this client or supplier (its ID in Centas WS).
   - name: page
     label: Page
     widget_type: number
@@ -446,6 +761,59 @@ forms:
     widget_type: number
     required: false
     help_text: Rows per page, 1 to 500. Default 100.
+- operation_id: find_company_by_code
+  title: Find a company's name by its code
+  fields:
+  - name: code
+    label: Company code
+    widget_type: text
+    required: true
+    help_text: The company registration code.
+- operation_id: send_consignment
+  title: Send a consignment note to Centas
+  fields:
+  - name: document_uid
+    label: Document UID
+    widget_type: text
+    required: true
+    help_text: The consignment's unique ID (DocumentUID).
+  - name: document_number
+    label: Document number
+    widget_type: text
+    required: true
+    help_text: The related document number (DocumentNumber).
+  - name: document_date
+    label: Document date
+    widget_type: text
+    required: true
+    help_text: The document date (DocumentDate). YYYY-MM-DD.
+  - name: estimated_arrival
+    label: Estimated arrival
+    widget_type: text
+    required: false
+    help_text: Estimated time of arrival (EstimatedTimeOfArrival). YYYY-MM-DD.
+  - name: consignee_name
+    label: Consignee name
+    widget_type: text
+    required: true
+    help_text: The consignee (ConsigneeName).
+  - name: consignee_code
+    label: Consignee code
+    widget_type: text
+    required: false
+    help_text: The consignee's registration number (ConsigneeRegistrationNumber).
+  - name: lines
+    label: Lines
+    widget_type: json
+    required: true
+    help_text: '1 to 500: description, unit, quantity.'
+    placeholder: '[{"description":"Widget A","unit":"vnt","quantity":100}]'
 - operation_id: test_connection
   title: Test the connection
+  fields: []
+- operation_id: get_statistics
+  title: Get counts of new documents
+  fields: []
+- operation_id: check_service
+  title: Check that Centas WS is running
   fields: []

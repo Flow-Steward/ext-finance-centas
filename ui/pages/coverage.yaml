@@ -2,31 +2,54 @@
 # Do not edit by hand: tests/test_contracts.py fails when this file drifts.
 page_id: coverage
 title: Coverage
-description: What of the documented Centas API the steps offer.
+description: What of the documented Centas WS API the steps offer.
 components:
 - component_id: coverage_summary
   type: markdown
   title: Coverage
-  body: |+
-    The steps cover the whole API Centas documents ([Centas API dokumentacija](https://centas.gitbook.io/docs)): 7 endpoints, each documented field either a step input or listed below with the reason it is not offered.
+  body: |
+    The steps cover the whole Centas WS API as its specification documents it ([Centas WS API documentation](https://ws.centas.lt/api-docs/)): 31 operations, each documented field either a step input or listed below with the reason it is not offered.
 
-    - **POST /v1/documents/create** → Send a sales invoice to Centas
-    - **POST /v1/orders/create** → Send a customer order to Centas
-    - **POST /v1/products/import** → Send products to Centas
-    - **GET /v1/products/export** → Get products, Find a product by code or barcode, Get stock levels, Test the connection
-    - **POST /v1/payments/import** → Send bank payments to Centas
-    - **GET /v1/payments/export** → Get payments, Send bank payments to Centas
-    - **POST /v1/documents/purchase/import** → Send a purchase invoice to Centas
+    - **GET /test** → Check that Centas WS is running
+    - **GET /verify** → Test the connection
+    - **GET /statistics** → Get counts of new documents
+    - **GET /products/export/json** → Get product prices and stock
+    - **GET /products/export/json/full** → Get products
+    - **GET /products/export/json/one** → Get a product by code
+    - **GET /products/export** → Get product cards with units and VAT rates
+    - **POST /products/import** → Send products to Centas
+    - **GET /products/gallery** → Get a product's gallery link
+    - **GET /documents/export** → Get sales documents by date or unpaid, Take new sales documents from the Centas WS queue
+    - **GET /documents/create** → Not a step: it only answers that POST is required.
+    - **POST /documents/create** → Send a sales invoice to Centas
+    - **GET /documents/get** → Get a sales document by number
+    - **POST /documents/update** → Update sales documents' payment status
+    - **POST /documents/delete** → Delete sales documents
+    - **POST /documents/payments/create** → Record payments against sales documents
+    - **GET /orders/create** → Not a step: it only answers that POST is required.
+    - **POST /orders/create** → Send a customer order to Centas
+    - **GET /orders/export** → Take new orders from the Centas WS queue
+    - **GET /orders/document/pdf** → Get the invoice PDF of an order
+    - **POST /purchase/import** → Send an invoice to another company's Centas
+    - **GET /purchase/export** → Get purchases for a date range, Take new purchases from the Centas WS queue
+    - **POST /documents/purchase/import** → Send a purchase invoice to Centas
+    - **POST /payments/import** → Send bank and cash payments to Centas
+    - **GET /payments/export** → Take new payments from the Centas WS queue
+    - **GET /payments/export/{type}** → Take new payments from the Centas WS queue
+    - **POST /contrahents/import** → Send clients and suppliers to Centas
+    - **GET /contrahents/export** → Get clients and suppliers
+    - **GET /contrahents/search** → Find a company's name by its code
+    - **GET /consignments/import** → Not a step: the same as POST /consignments/import, which the specification prefers, but with the data and the key in the address.
+    - **POST /consignments/import** → Send a consignment note to Centas
 
     ### Fields not offered
 
-    - `isaf` of POST /v1/documents/create: Not offered: the documentation says it is used when the invoice is left out of the i.SAF registers but not which value to send.
-    - `asmuo_status` of POST /v1/documents/create: Not offered: the documentation gives it no description.
-    - `salis_kodas` of POST /v1/documents/create: Not offered: the documentation gives it no description.
-    - `rows[].oper` of POST /v1/products/import: Always UPD, the only value the documentation shows.
-    - `rows[].AnalogProducts` of POST /v1/products/import: Not offered: the documentation shows it only empty, without its content.
-    - `rows[].RecommendedProducts` of POST /v1/products/import: Not offered: the documentation shows it only empty, without its content.
+    - `item.oper` of POST /products/import: Always UPD (update or create), the only value named.
+    - `rows[].atv_pvm` of POST /documents/create: Not offered: the specification names it without its meaning or values.
+    - `isaf` of POST /documents/create: Not offered: the documentation says it leaves the invoice out of the i.SAF registers but not which value to send.
+    - `asmuo_status` of POST /documents/create: Not offered: the documentation gives it no description.
+    - `salis_kodas` of POST /documents/create: Not offered: the documentation gives it no description.
+    - `rows[].pvm_tar` of POST /orders/create: The GitBook table's name of pvmtar; the specification and both examples use pvmtar, which is sent.
+    - `item.oper` of POST /contrahents/import: Always UPD, the only value named.
 
-    The key (`token`) is the connection's WS raktas: in the body of every write and, as the API requires, in the query of the two exports.
-
-...
+    The key (`token`) is the connection's WS key: in the body of every write and, as the API requires, in the query of every read.

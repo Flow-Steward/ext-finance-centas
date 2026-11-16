@@ -7,18 +7,20 @@ components:
     title: For the person who runs Centas
     body: |
       1. **Check Centas WS.** The steps use Centas WS (ws.centas.lt), the web exchange of the Centas program. Your company needs it active, and Centas set up to work with it.
-      2. **Copy the WS key.** In Centas open **Parametrai → Nustatymai → Bendrieji → III**. The field **WS raktas** holds the key. Treat it like a password: anyone with it can send documents to your Centas WS.
-      3. **Upload products and stock, if workflows read them.** The read steps see what Centas uploads to Centas WS:
+      2. **Copy the WS key.** In Centas open **Parametrai → Nustatymai → Bendrieji → III**. The field **WS raktas** holds the key. Treat it like a password: anyone with it can send documents to your Centas WS and take records from its queue.
+      3. **Note when the key expires.** A WS key is valid until a date; **Test connection** shows it and warns 30 days before. Renew it in Centas WS in time.
+      4. **Upload products and stock, if workflows read them.** The read steps see what Centas uploads to Centas WS:
          - stock: **Nustatymai → Bendrieji → VIII**, *Autom. el. pard. sandėlio atnaujinimas* → **Per Centas WS**;
          - product cards: in the product list, *Sąrašo eksportas* → **Prekių ir paslaugų sąrašas į WS**.
-      4. **Import what workflows send.** Sent invoices, orders and payments wait in Centas WS. Import them in Centas through the **ws.centas.lt** menu (new sales and purchase invoices, orders, payments).
+      5. **Import what workflows send.** Sent invoices, orders and payments wait in Centas WS. Import them in Centas through the **ws.centas.lt** menu.
+      6. **Decide who takes the queue.** The *Take new …* steps collect new documents, orders, purchases and payments from Centas WS the way the Centas program does; after them Centas no longer sees those records as new. Use them only in a workflow that plays the program's part.
 
-      [Centas: how to set up Centas for WS (PDF)](http://edlonta.info/files/centas_ws.pdf)
+      [Centas: how to set up Centas for WS (PDF)](https://ws.centas.lt/l/files/centas_ws.pdf) · [Centas WS API documentation](https://ws.centas.lt/api-docs/)
   - component_id: setup_flow_steward
     type: markdown
     title: For the person who connects in Flow Steward
     body: |
       1. Open **Connection** and add a connection. Name it after the company, for example `UAB X`.
       2. Paste the WS key.
-      3. Save and press **Test connection**. It starts reading the product export to check the key.
+      3. Save and press **Test connection**. It checks the key and shows until when it is valid.
       4. In a workflow, add a Centas step and pick this connection. Start with **Send a sales invoice to Centas** or **Get products** on **Centas API**.

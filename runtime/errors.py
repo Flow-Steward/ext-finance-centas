@@ -26,6 +26,8 @@ TIMEOUT_UNKNOWN = "timeout_unknown"
 CONNECTION_FAILED = "connection_failed"
 REDIRECT_REJECTED = "redirect_rejected"
 BLOCKED_ADDRESS = "blocked_address"
+ARTIFACT_INPUT_UNAVAILABLE = "artifact_input_unavailable"
+ARTIFACT_OUTPUT_UNAVAILABLE = "artifact_output_unavailable"
 INTERNAL_ERROR = "internal_error"
 
 SAFE_ERROR_CODES: frozenset[str] = frozenset(
@@ -46,6 +48,8 @@ SAFE_ERROR_CODES: frozenset[str] = frozenset(
         CONNECTION_FAILED,
         REDIRECT_REJECTED,
         BLOCKED_ADDRESS,
+        ARTIFACT_INPUT_UNAVAILABLE,
+        ARTIFACT_OUTPUT_UNAVAILABLE,
         INTERNAL_ERROR,
     }
 )

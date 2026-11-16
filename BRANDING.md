@@ -1,27 +1,36 @@
 # Branding
 
-`icon.png` is a neutral placeholder drawn for this extension: a document sheet and a coin
-on a blue rounded square. It carries no mark, name or artwork of Centas or of its
-developer.
+`icon.png` is the round mark of Centas WS — a white cent sign (¢) on a blue disc — taken
+from Centas WS's own published artwork, used only to identify this integration with
+Centas WS in Flow Steward.
 
 ## Source
 
-- Centas publishes no logo of its own that could be used: on 2026-11-16 the favicon of
-  ws.centas.lt was empty (0 bytes), its sign-in page shows no logo image, and the
-  developer's site (edlonta.lt, which centas.lt redirects to) shows only the developer's
-  own mark and a photograph of a 1-centas coin.
-- So no third-party asset was used. The icon is drawn from plain shapes by
-  `tests/reference/make_icon.py` (Python standard library only), which produces the same
-  file on every run.
+- Product: Centas WS, the web exchange of the Centas accounting program, by Edlonta, UAB —
+  <https://ws.centas.lt/>.
+- Official asset: the share image (`og:image`) of the Centas WS home page
+  <https://ws.centas.lt/l/>:
+  <https://ws.centas.lt/l/wp-content/uploads/2020/05/dfghdgfhdfgh.png>
+  (1200 × 630 PNG: the round ¢ mark next to the CENTASWS wordmark on white).
+- SHA-256 of the source: `06f56e880972a8ae4b3ee120bdda62f0a8b7fcd6fa2ef3d4d129455a498cd8e7`
+  (downloaded 2026-11-16).
+
+The same mark appears in the Centas WS logo served at
+<https://ws.centas.lt/assets/img/logo.png> (570 × 150), where it is smaller. The Centas
+program's own window icon was not found published at a usable size, and Edlonta's own
+mark names the developer rather than the product, so the Centas WS mark is used.
 
 ## What was done
 
-- `python3 tests/reference/make_icon.py` writes a 128 × 128 RGBA PNG.
-- SHA-256 of `icon.png`: `3c313d17534efd370515997920fc93a4c324a8a4a47b7e33a1de45c22f3562e6`.
+- Only the round mark was used: the disc (170 × 170 pixels in the source, found as the
+  blue pixels left of the wordmark) was cut out on its circle and reduced to 128 × 128
+  by area averaging (4 × 4 samples a pixel), the area outside the circle made
+  transparent. No colour, stroke or shape was changed. Done with a short Python script
+  using only the standard library (the PNG decoded and encoded with `zlib`).
+- SHA-256 of `icon.png`: `a172394b035307b66c692c3f6da432a9917c9aca7b7b709b6f9d13e36a9ea7e3`.
 
 ## Use
 
-Centas is a product of Edlonta, UAB. The name is used only to say which program this
-integration connects to; it does not imply endorsement by Edlonta, UAB. The icon is this
-extension's own and may be replaced by an official Centas mark when one is available
-with permission to use it.
+Centas and Centas WS belong to Edlonta, UAB. ws.centas.lt and edlonta.lt publish no brand
+or logo usage guidelines (checked 2026-11-16). The mark is used unaltered, only to show
+which product this integration connects to; it does not imply endorsement by Edlonta, UAB.

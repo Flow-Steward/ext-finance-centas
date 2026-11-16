@@ -8,19 +8,20 @@ version: 0.1.0
 release_stage: active
 billing_mode: free
 display_name: Centas
-description: 'Send documents from your workflows to Centas, the Lithuanian accounting
-  and business program, through its web exchange Centas WS (ws.centas.lt). Steps send
-  sales invoices, purchase invoices and customer orders with their lines, and bank
-  payments and product cards in batches. Centas WS keeps what it receives until an
-  accountant imports it in the Centas program.
+description: 'Connect workflows to Centas, the Lithuanian accounting and business program, through
+  its web exchange Centas WS (ws.centas.lt), covering its whole documented API. Steps send sales
+  invoices, customer orders, purchase invoices and invoices to other companies with their lines,
+  and payments, products, clients and suppliers and consignment notes in batches; they also
+  update, record payments against or delete sales documents. Totals are checked against the
+  lines before anything is sent.
 
 
-  Read steps return the product cards, stock by warehouse and payments that the Centas
-  program uploaded to Centas WS, and find a product by its code or barcode. Totals
-  are checked against the lines before anything is sent. Combine the steps to turn
-  shop orders into Centas invoices or orders, feed stock to a storefront or pass bank
-  payments on for booking. Each connection is one Centas WS project, reached with
-  its WS key.'
+  Read steps return products, prices and stock, product cards and gallery links, clients and
+  suppliers, sales documents by number, date or unpaid status, purchases of a date range, an
+  order’s invoice PDF and counts of new records. When a workflow plays the Centas program’s
+  part, take steps collect new sales documents, orders, purchases and payments from the Centas
+  WS queue and save them as workflow files. Each connection is one Centas WS project, reached
+  with its WS key.'
 vendor:
   name: Flow Steward
   support_url: https://github.com/Flow-Steward/ext-finance-centas/issues
@@ -35,28 +36,31 @@ listing:
   - orders
   - payments
   - inventory
-  summary: Send invoices, orders, payments and products to Centas and read its products,
-    stock and payments.
+  summary: Send invoices, orders, payments, products and clients to Centas WS and read products,
+    stock, documents and purchases.
   categories:
   - finance
   - inventory
   - sales
-  setup_summary: "Turn on the Centas WS service for your Centas program, copy its\
-    \ WS key (Nustatymai \u2192 Bendrieji \u2192 III \u2192 WS raktas) into a project\
-    \ connection and run the connection test."
+  setup_summary: Turn on the Centas WS service for your Centas program, copy its WS key (Nustatymai
+    → Bendrieji → III → WS raktas) into a project connection and run the connection test.
 features:
 - tool
 - action
 required_scopes:
 - extension:invoke
+- artifact:read
+- artifact:write
 machine_auth:
   service_account_key: svc_ext_centas
   required_scopes:
   - extension:invoke
+  - artifact:read
+  - artifact:write
 account_scope:
   scope_type: project
-  description: Each Centas WS project (its WS key) is a project connection. A project
-    may hold several, for example one per company.
+  description: Each Centas WS project (its WS key) is a project connection. A project may hold
+    several, for example one per company.
 egress:
   hosts:
   - ws.centas.lt
@@ -66,8 +70,33 @@ external_effects:
   channel: centas_ws
   idempotency: required
   test_mode_behavior: suppress
+- operation_id: take_new_sales_documents
+  effect_kind: centas_take_new_sales_documents
+  channel: centas_ws
+  idempotency: required
+  test_mode_behavior: suppress
+- operation_id: update_sales_documents
+  effect_kind: centas_update_sales_documents
+  channel: centas_ws
+  idempotency: required
+  test_mode_behavior: suppress
+- operation_id: record_document_payments
+  effect_kind: centas_record_document_payments
+  channel: centas_ws
+  idempotency: required
+  test_mode_behavior: suppress
+- operation_id: delete_sales_documents
+  effect_kind: centas_delete_sales_documents
+  channel: centas_ws
+  idempotency: required
+  test_mode_behavior: suppress
 - operation_id: send_order
   effect_kind: centas_send_order
+  channel: centas_ws
+  idempotency: required
+  test_mode_behavior: suppress
+- operation_id: take_new_orders
+  effect_kind: centas_take_new_orders
   channel: centas_ws
   idempotency: required
   test_mode_behavior: suppress
@@ -76,13 +105,38 @@ external_effects:
   channel: centas_ws
   idempotency: required
   test_mode_behavior: suppress
+- operation_id: send_invoice_to_company
+  effect_kind: centas_send_invoice_to_company
+  channel: centas_ws
+  idempotency: required
+  test_mode_behavior: suppress
+- operation_id: take_new_purchases
+  effect_kind: centas_take_new_purchases
+  channel: centas_ws
+  idempotency: required
+  test_mode_behavior: suppress
 - operation_id: send_payments
   effect_kind: centas_send_payments
   channel: centas_ws
   idempotency: required
   test_mode_behavior: suppress
+- operation_id: take_new_payments
+  effect_kind: centas_take_new_payments
+  channel: centas_ws
+  idempotency: required
+  test_mode_behavior: suppress
 - operation_id: send_products
   effect_kind: centas_send_products
+  channel: centas_ws
+  idempotency: required
+  test_mode_behavior: suppress
+- operation_id: send_contrahents
+  effect_kind: centas_send_contrahents
+  channel: centas_ws
+  idempotency: required
+  test_mode_behavior: suppress
+- operation_id: send_consignment
+  effect_kind: centas_send_consignment
   channel: centas_ws
   idempotency: required
   test_mode_behavior: suppress
