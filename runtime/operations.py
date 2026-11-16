@@ -13,6 +13,7 @@ from . import budget, catalog, errors
 from .connection import connection_from_payload
 from .context import ArtifactReader, ArtifactWriter, Context, TransportFactory
 from .errors import ExtensionError, error_response, invalid
+from .files import ARTIFACT_TIMEOUT_SECONDS
 from .limits import STEP_MARGIN_SECONDS, STEP_TIMEOUT_SECONDS
 from .results import fit_write_result, mark_write, ok
 from .transport import CentasTransport, DeadlineReached
@@ -44,7 +45,12 @@ def handle_runtime(
             payload, connection_ref=connection_ref if isinstance(connection_ref, str) else ""
         )
         transport = transport_factory(connection)
-        transport.deadline = transport.clock() + STEP_TIMEOUT_SECONDS - STEP_MARGIN_SECONDS
+        # A step that saves a file keeps the file's own time in reserve, so a take never
+        # starts when what it takes could not be saved in time.
+        reserve = ARTIFACT_TIMEOUT_SECONDS if operation_id in catalog.FILE_OUTPUT_IDS else 0.0
+        transport.deadline = (
+            transport.clock() + STEP_TIMEOUT_SECONDS - STEP_MARGIN_SECONDS - reserve
+        )
         context = Context(
             payload=payload,
             operation_input=operation_input,

@@ -100,6 +100,9 @@ DOCUMENT_STEPS = frozenset(
     {"send_sales_invoice", "send_order", "send_purchase_invoice", "send_invoice_to_company"}
 )
 
+#: Steps that save a workflow file after reading.
+FILE_OUTPUT_IDS: frozenset[str] = frozenset(TAKES) | {"get_order_invoice_pdf"}
+
 EFFECT_OPERATION_IDS: frozenset[str] = frozenset(WRITES) | frozenset(TAKES)
 OPERATION_IDS: frozenset[str] = EFFECT_OPERATION_IDS | frozenset(READS)
 #: Kept for callers that ask which steps change Centas WS.
@@ -108,6 +111,7 @@ WRITE_OPERATION_IDS = EFFECT_OPERATION_IDS
 __all__ = [
     "DOCUMENT_STEPS",
     "EFFECT_OPERATION_IDS",
+    "FILE_OUTPUT_IDS",
     "NEUTRAL",
     "OPERATION_IDS",
     "READS",

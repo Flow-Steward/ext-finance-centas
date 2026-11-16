@@ -110,10 +110,47 @@ def test_records_too_many_for_the_output_stay_in_the_file(monkeypatch: Any) -> N
     assert any("too many" in w for w in result["warnings"])
 
 
-def test_a_file_that_cannot_be_saved_is_reported_as_unknown() -> None:
+def test_records_are_returned_when_the_file_cannot_be_saved() -> None:
+    raw = xml(PAYMENT, tag="Payment")
+    response = run(FakeCentas(payments__export=raw), "take_new_payments", files=Files(fail=True))
+    assert response["ok"] is True, response
+    assert response["external_effect_status"] == "succeeded"
+    result = response["result"]
+    assert result["file"] is None and result["count"] == 1
+    assert result["items"][0]["RefNr"] == "REF-001"
+    assert any("only in this step's output, not in a file" in w for w in result["warnings"])
+
+
+def test_records_neither_saved_nor_fitting_are_reported_as_lost(monkeypatch: Any) -> None:
+    monkeypatch.setattr(budget, "MAX_CANDIDATE_STRINGS", 5)
+    raw = xml(*[PAYMENT] * 3, tag="Payment")
+    response = run(FakeCentas(payments__export=raw), "take_new_payments", files=Files(fail=True))
+    assert response["error_code"] == "artifact_output_unavailable"
+    assert response["external_effect_status"] == "timeout_unknown"
+    assert response["definitely_no_external_effect"] is False
+    assert "neither saved nor returned" in response["error"]
+    assert "too many for the step output" in response["error"]
+
+
+def test_an_unreadable_answer_that_cannot_be_saved_is_reported_as_lost() -> None:
     response = run(
-        FakeCentas(orders__export=xml(tag="dokumentas")), "take_new_orders", files=Files(fail=True)
+        FakeCentas(orders__export=b"<root><dokumentas>"), "take_new_orders", files=Files(fail=True)
     )
     assert response["error_code"] == "artifact_output_unavailable"
     assert response["external_effect_status"] == "timeout_unknown"
+    assert "neither saved nor returned" in response["error"]
     assert "marked them as exported" in response["error"]
+
+
+def test_a_take_does_not_start_without_time_to_save_its_file() -> None:
+    # 600 s budget, 30 s margin, 120 s kept for the file: at 440 s only 10 s are left.
+    times = iter([0.0])
+    fake = FakeCentas(orders__export=xml(tag="dokumentas"))
+    response = run(fake, "take_new_orders", clock=lambda: next(times, 440.0))
+    assert response["error_code"] == "timeout"
+    assert response["definitely_no_external_effect"] is True
+    assert fake.calls == []
+    # The same time is enough for a read that saves nothing.
+    times = iter([0.0])
+    read = FakeCentas(test={"status": "ok"})
+    assert run(read, "check_service", clock=lambda: next(times, 440.0))["ok"] is True

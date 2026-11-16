@@ -62,6 +62,8 @@ def take(context: Context, operation_id: str) -> dict[str, Any]:
     path = path_of(operation_id, context.operation_input)
     raw = context.transport.take(path)
     scrubbed = context.transport.scrub_bytes(raw)
+    handle: str | None = None
+    save_failure = ""
     try:
         handle = files.save(
             context,
@@ -71,13 +73,10 @@ def take(context: Context, operation_id: str) -> dict[str, Any]:
             what="The records taken from Centas WS",
         )
     except errors.ExtensionError as exc:
-        raise unknown(
-            f"{exc.message}: Centas WS has probably marked them as exported already — check "
-            "in Centas before running the step again",
-            errors.ARTIFACT_OUTPUT_UNAVAILABLE,
-            None,
-        ) from None
+        # The records are taken: they are still returned below if they can be.
+        save_failure = exc.message
     warnings: list[str] = []
+    read_failure = ""
     try:
         items, read_warnings = xml_records(
             raw, context.transport.scrub, record_tag=TAKES[operation_id][1], path=path
@@ -85,10 +84,27 @@ def take(context: Context, operation_id: str) -> dict[str, Any]:
         warnings += read_warnings.items
     except errors.ExtensionError as exc:
         items = []
-        warnings.append(f"{exc.message}; the answer is kept whole in the file")
+        read_failure = exc.message
     count = len(items)
     result = {"items": items, "count": count, "file": handle, "warnings": warnings}
-    if not budget.fits(result):
+    fits = budget.fits(result)
+    if handle is None:
+        if read_failure or not fits:
+            why = read_failure or f"the {count} records are too many for the step output"
+            raise unknown(
+                "Centas WS handed out records and has probably marked them as exported, but "
+                f"they are neither saved nor returned: the file could not be saved "
+                f"({save_failure}) and {why}. Check in Centas before running the step again",
+                errors.ARTIFACT_OUTPUT_UNAVAILABLE,
+                None,
+            )
+        warnings.append(
+            f"{save_failure}: the records taken are only in this step's output, not in a file"
+        )
+        return result
+    if read_failure:
+        warnings.append(f"{read_failure}; the answer is kept whole in the file")
+    if not fits:
         result["items"] = []
         warnings.append(
             f"The {count} records taken are too many for the step output; they are all in the file"
