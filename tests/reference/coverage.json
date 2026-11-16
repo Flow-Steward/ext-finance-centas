@@ -1,0 +1,603 @@
+{
+  "source": {
+    "url": "https://centas.gitbook.io/docs/master.md",
+    "sha256": "52b970595b1dcec8421e748251e250a96faffe1e0b8da42020e617aafb4e22b9",
+    "retrieved": "2026-11-16"
+  },
+  "endpoints": [
+    {
+      "endpoint": "POST /v1/documents/create",
+      "steps": [
+        "send_sales_invoice"
+      ],
+      "fields": [
+        {
+          "field": "token",
+          "input": null,
+          "note": "The connection's key, sent in the form body."
+        },
+        {
+          "field": "rows",
+          "input": "send_sales_invoice.lines"
+        },
+        {
+          "field": "trans_id",
+          "input": "send_sales_invoice.transaction_id"
+        },
+        {
+          "field": "intrs_transprusis",
+          "input": "send_sales_invoice.intrastat_transport"
+        },
+        {
+          "field": "intrs_pristsal",
+          "input": "send_sales_invoice.intrastat_delivery_terms"
+        },
+        {
+          "field": "intrs_sandoris",
+          "input": "send_sales_invoice.intrastat_transaction"
+        },
+        {
+          "field": "intrs_apskritis",
+          "input": "send_sales_invoice.intrastat_county"
+        },
+        {
+          "field": "intrs_eusalis",
+          "input": "send_sales_invoice.intrastat_eu_country"
+        },
+        {
+          "field": "oper_apras",
+          "input": "send_sales_invoice.operation_description"
+        },
+        {
+          "field": "projektas",
+          "input": "send_sales_invoice.project"
+        },
+        {
+          "field": "uzsaknr",
+          "input": "send_sales_invoice.order_number"
+        },
+        {
+          "field": "isaf",
+          "input": null,
+          "note": "Not offered: the documentation says it is used when the invoice is left out of the i.SAF registers but not which value to send."
+        },
+        {
+          "field": "pastaba",
+          "input": "send_sales_invoice.note"
+        },
+        {
+          "field": "israse_pareigos",
+          "input": "send_sales_invoice.issued_by_position"
+        },
+        {
+          "field": "israse_asmuo",
+          "input": "send_sales_invoice.issued_by"
+        },
+        {
+          "field": "sask_moketpvm",
+          "input": "send_sales_invoice.vat_payable_account"
+        },
+        {
+          "field": "sask_pirkskol",
+          "input": "send_sales_invoice.receivable_account"
+        },
+        {
+          "field": "sask_pajamos",
+          "input": "send_sales_invoice.income_account"
+        },
+        {
+          "field": "kl_kodas",
+          "input": "send_sales_invoice.buyer_code"
+        },
+        {
+          "field": "estipas",
+          "input": "send_sales_invoice.buyer_eu_type"
+        },
+        {
+          "field": "email",
+          "input": "send_sales_invoice.buyer_email"
+        },
+        {
+          "field": "miestas",
+          "input": "send_sales_invoice.buyer_city"
+        },
+        {
+          "field": "adresas",
+          "input": "send_sales_invoice.buyer_address"
+        },
+        {
+          "field": "salis",
+          "input": "send_sales_invoice.buyer_country"
+        },
+        {
+          "field": "grupe",
+          "input": "send_sales_invoice.buyer_group"
+        },
+        {
+          "field": "pvm_kodas",
+          "input": "send_sales_invoice.buyer_vat_code"
+        },
+        {
+          "field": "im_kodas",
+          "input": "send_sales_invoice.buyer_company_code"
+        },
+        {
+          "field": "savikaina",
+          "input": "send_sales_invoice.cost"
+        },
+        {
+          "field": "bepvm_suma",
+          "input": "send_sales_invoice.net_total",
+          "note": "Computed from the lines when empty."
+        },
+        {
+          "field": "pvm_suma",
+          "input": "send_sales_invoice.vat_total",
+          "note": "Computed from the lines when empty."
+        },
+        {
+          "field": "apmok_iki",
+          "input": "send_sales_invoice.due_date"
+        },
+        {
+          "field": "dok_num",
+          "input": "send_sales_invoice.number",
+          "note": "auto when empty."
+        },
+        {
+          "field": "dok_suma",
+          "input": "send_sales_invoice.total",
+          "note": "Net total + VAT total."
+        },
+        {
+          "field": "data",
+          "input": "send_sales_invoice.date"
+        },
+        {
+          "field": "pirkejas",
+          "input": "send_sales_invoice.buyer_name"
+        },
+        {
+          "field": "asmuo_status",
+          "input": null,
+          "note": "Not offered: the documentation gives it no description."
+        },
+        {
+          "field": "salis_kodas",
+          "input": null,
+          "note": "Not offered: the documentation gives it no description."
+        },
+        {
+          "field": "rows[].kodas",
+          "input": "send_sales_invoice.lines[].code"
+        },
+        {
+          "field": "rows[].pavadinimas",
+          "input": "send_sales_invoice.lines[].name"
+        },
+        {
+          "field": "rows[].matovnt",
+          "input": "send_sales_invoice.lines[].unit"
+        },
+        {
+          "field": "rows[].kiekis",
+          "input": "send_sales_invoice.lines[].quantity"
+        },
+        {
+          "field": "rows[].kaina",
+          "input": "send_sales_invoice.lines[].price"
+        },
+        {
+          "field": "rows[].pvmtar",
+          "input": "send_sales_invoice.lines[].vat_percent"
+        },
+        {
+          "field": "rows[].Mok_kodas",
+          "input": "send_sales_invoice.lines[].vat_code"
+        },
+        {
+          "field": "rows[].sask_pajamos",
+          "input": "send_sales_invoice.lines[].income_account"
+        },
+        {
+          "field": "rows[].projektas",
+          "input": "send_sales_invoice.lines[].project"
+        }
+      ]
+    },
+    {
+      "endpoint": "POST /v1/orders/create",
+      "steps": [
+        "send_order"
+      ],
+      "fields": [
+        {
+          "field": "rows",
+          "input": "send_order.lines"
+        },
+        {
+          "field": "token",
+          "input": null,
+          "note": "The connection's key, sent in the form body."
+        },
+        {
+          "field": "uzsakovas",
+          "input": "send_order.customer_name"
+        },
+        {
+          "field": "miestas",
+          "input": "send_order.customer_city"
+        },
+        {
+          "field": "adresas",
+          "input": "send_order.customer_address"
+        },
+        {
+          "field": "tel",
+          "input": "send_order.customer_phone"
+        },
+        {
+          "field": "im_kodas",
+          "input": "send_order.customer_company_code"
+        },
+        {
+          "field": "pvm_kodas",
+          "input": "send_order.customer_vat_code"
+        },
+        {
+          "field": "email",
+          "input": "send_order.customer_email"
+        },
+        {
+          "field": "uzsak_data",
+          "input": "send_order.date"
+        },
+        {
+          "field": "vykd_data",
+          "input": "send_order.execution_date"
+        },
+        {
+          "field": "pristat_data",
+          "input": "send_order.delivery_date"
+        },
+        {
+          "field": "apmok_data",
+          "input": "send_order.payment_date"
+        },
+        {
+          "field": "atvyk_data",
+          "input": "send_order.arrival_date"
+        },
+        {
+          "field": "isvyk_data",
+          "input": "send_order.departure_date"
+        },
+        {
+          "field": "uzsak_suma",
+          "input": "send_order.total",
+          "note": "Net total + VAT total."
+        },
+        {
+          "field": "uzsak_num",
+          "input": "send_order.number"
+        },
+        {
+          "field": "pvm_suma",
+          "input": "send_order.vat_total",
+          "note": "Computed from the lines when empty."
+        },
+        {
+          "field": "bepvm_suma",
+          "input": "send_order.net_total",
+          "note": "Computed from the lines when empty."
+        },
+        {
+          "field": "sandelis",
+          "input": "send_order.warehouse"
+        },
+        {
+          "field": "pasto_kodas",
+          "input": "send_order.postal_code"
+        },
+        {
+          "field": "uzsakovas_pastaba",
+          "input": "send_order.customer_note"
+        },
+        {
+          "field": "pirk_skolsask",
+          "input": "send_order.receivable_account"
+        },
+        {
+          "field": "rows[].kodas",
+          "input": "send_order.lines[].code"
+        },
+        {
+          "field": "rows[].t_kodas",
+          "input": "send_order.lines[].supplier_code"
+        },
+        {
+          "field": "rows[].pavadinimas",
+          "input": "send_order.lines[].name"
+        },
+        {
+          "field": "rows[].matovnt",
+          "input": "send_order.lines[].unit"
+        },
+        {
+          "field": "rows[].kiekis",
+          "input": "send_order.lines[].quantity"
+        },
+        {
+          "field": "rows[].kaina",
+          "input": "send_order.lines[].price"
+        },
+        {
+          "field": "rows[].pvm_tar",
+          "input": "send_order.lines[].vat_percent",
+          "note": "The table says pvm_tar, the example pvmtar: both are sent."
+        }
+      ]
+    },
+    {
+      "endpoint": "POST /v1/products/import",
+      "steps": [
+        "send_products"
+      ],
+      "fields": [
+        {
+          "field": "token",
+          "input": null,
+          "note": "The connection's key: in the form body and in every item."
+        },
+        {
+          "field": "data",
+          "input": "send_products.products",
+          "note": "Built as the documented XML."
+        },
+        {
+          "field": "rows[].token",
+          "input": null,
+          "note": "The connection's key, in every item as documented."
+        },
+        {
+          "field": "rows[].oper",
+          "input": null,
+          "note": "Always UPD, the only value the documentation shows."
+        },
+        {
+          "field": "rows[].id",
+          "input": "send_products.products[].id"
+        },
+        {
+          "field": "rows[].kodas",
+          "input": "send_products.products[].code"
+        },
+        {
+          "field": "rows[].pavadinimas",
+          "input": "send_products.products[].name"
+        },
+        {
+          "field": "rows[].matovnt",
+          "input": "send_products.products[].unit"
+        },
+        {
+          "field": "rows[].kaina",
+          "input": "send_products.products[].price"
+        },
+        {
+          "field": "rows[].pvmtar",
+          "input": "send_products.products[].vat_percent"
+        },
+        {
+          "field": "rows[].likutis",
+          "input": "send_products.products[].stock"
+        },
+        {
+          "field": "rows[].grupe1",
+          "input": "send_products.products[].group1"
+        },
+        {
+          "field": "rows[].grupe2",
+          "input": "send_products.products[].group2"
+        },
+        {
+          "field": "rows[].grupe3",
+          "input": "send_products.products[].group3"
+        },
+        {
+          "field": "rows[].barkodas",
+          "input": "send_products.products[].barcode"
+        },
+        {
+          "field": "rows[].aprasymas",
+          "input": "send_products.products[].description"
+        },
+        {
+          "field": "rows[].Nuotrauka",
+          "input": "send_products.products[].photo"
+        },
+        {
+          "field": "rows[].Stocks",
+          "input": "send_products.products[].stocks"
+        },
+        {
+          "field": "rows[].ProductParameters",
+          "input": "send_products.products[].parameters"
+        },
+        {
+          "field": "rows[].AnalogProducts",
+          "input": null,
+          "note": "Not offered: the documentation shows it only empty, without its content."
+        },
+        {
+          "field": "rows[].RecommendedProducts",
+          "input": null,
+          "note": "Not offered: the documentation shows it only empty, without its content."
+        }
+      ]
+    },
+    {
+      "endpoint": "GET /v1/products/export",
+      "steps": [
+        "get_products",
+        "find_product",
+        "get_stock_levels",
+        "test_connection"
+      ],
+      "fields": [
+        {
+          "field": "token",
+          "input": null,
+          "note": "The connection's key, in the query (the only place it is read)."
+        },
+        {
+          "field": "id",
+          "input": "get_products.id"
+        }
+      ]
+    },
+    {
+      "endpoint": "POST /v1/payments/import",
+      "steps": [
+        "send_payments"
+      ],
+      "fields": [
+        {
+          "field": "token",
+          "input": null,
+          "note": "The connection's key, sent in the form body."
+        },
+        {
+          "field": "data",
+          "input": "send_payments.payments",
+          "note": "Built as the documented XML."
+        },
+        {
+          "field": "rows[].PaymentType",
+          "input": "send_payments.payments[].type"
+        },
+        {
+          "field": "rows[].Date",
+          "input": "send_payments.payments[].date"
+        },
+        {
+          "field": "rows[].Amount",
+          "input": "send_payments.payments[].amount"
+        },
+        {
+          "field": "rows[].DocNr",
+          "input": "send_payments.payments[].document_number"
+        },
+        {
+          "field": "rows[].RefNr",
+          "input": "send_payments.payments[].reference"
+        },
+        {
+          "field": "rows[].Details",
+          "input": "send_payments.payments[].details"
+        },
+        {
+          "field": "rows[].RecName",
+          "input": "send_payments.payments[].payer_name"
+        },
+        {
+          "field": "rows[].RecId",
+          "input": "send_payments.payments[].payer_code"
+        },
+        {
+          "field": "rows[].ToAccountNumber",
+          "input": "send_payments.payments[].account"
+        }
+      ]
+    },
+    {
+      "endpoint": "GET /v1/payments/export",
+      "steps": [
+        "get_payments",
+        "send_payments"
+      ],
+      "fields": [
+        {
+          "field": "token",
+          "input": null,
+          "note": "The connection's key, in the query (the only place it is read)."
+        }
+      ]
+    },
+    {
+      "endpoint": "POST /v1/documents/purchase/import",
+      "steps": [
+        "send_purchase_invoice"
+      ],
+      "fields": [
+        {
+          "field": "token",
+          "input": null,
+          "note": "The connection's key, sent in the form body."
+        },
+        {
+          "field": "kontrah",
+          "input": "send_purchase_invoice.seller_name"
+        },
+        {
+          "field": "data",
+          "input": "send_purchase_invoice.date"
+        },
+        {
+          "field": "dok_suma",
+          "input": "send_purchase_invoice.total",
+          "note": "Net total + VAT total."
+        },
+        {
+          "field": "dok_num",
+          "input": "send_purchase_invoice.number"
+        },
+        {
+          "field": "pvm_suma",
+          "input": "send_purchase_invoice.vat_total",
+          "note": "Computed from the lines when empty."
+        },
+        {
+          "field": "bepvm_suma",
+          "input": "send_purchase_invoice.net_total",
+          "note": "Computed from the lines when empty."
+        },
+        {
+          "field": "rows",
+          "input": "send_purchase_invoice.lines",
+          "note": "The documentation gives no line fields for purchases; the step sends the sales invoice's line fields."
+        }
+      ]
+    }
+  ],
+  "undocumented": [
+    {
+      "endpoint": "GET /v1/documents/export",
+      "status": "excluded: undocumented"
+    },
+    {
+      "endpoint": "GET /v1/orders/export",
+      "status": "excluded: undocumented"
+    },
+    {
+      "endpoint": "GET /v1/documents/get",
+      "status": "excluded: undocumented"
+    },
+    {
+      "endpoint": "/v1/documents/delete",
+      "status": "excluded: undocumented"
+    }
+  ],
+  "not_verified": [
+    "Dates are sent as YYYY.MM.DD, the form of the documentation's payment example and of the Centas program; the documentation gives no date format for the other fields.",
+    "The document and order fields are sent in the POST body, like the key; the documentation lists them as query parameters of a POST.",
+    "Line values are sent as text with a point as decimal mark, as in the documentation's examples.",
+    "Order lines carry the VAT rate as both pvm_tar and pvmtar, because the documentation names it both ways.",
+    "Purchase invoice lines use the sales invoice's line fields; the documentation names none for purchases.",
+    "Centas WS documents no duplicate check: sending the same invoice, order, payment or product again may create it again.",
+    "How Centas matches the buyer of a sales invoice to an existing client (code, company code, VAT code or name) is not documented; the buyer group applies to a new buyer.",
+    "Centas WS documents no required fields except for purchase invoices; the steps require the number, date, party name and lines.",
+    "Which payments the payment export holds is not documented; the reference check before sending payments is a hint only.",
+    "Totals are checked within one cent per line, because Centas lets each company choose how VAT is summed."
+  ]
+}

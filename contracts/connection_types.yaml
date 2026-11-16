@@ -1,0 +1,29 @@
+connection_types:
+  - connection_type_id: centas
+    display_name: Centas WS
+    description: One Centas WS project (ws.centas.lt), reached with its WS key.
+    auth:
+      type: static_secret
+    config_schema:
+      type: object
+      additionalProperties: false
+      properties:
+        label:
+          type: string
+          maxLength: 190
+          title: Label
+          description: Optional name for this connection, for example the company.
+    secret_schema:
+      type: object
+      additionalProperties: false
+      required: [token]
+      properties:
+        token:
+          type: string
+          minLength: 8
+          maxLength: 256
+          pattern: "^[\\x21-\\x7e]+$"
+          title: WS key
+          description: The project's Centas WS key (WS raktas), as Centas shows it.
+    capabilities:
+      test_connection: true

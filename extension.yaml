@@ -1,0 +1,109 @@
+manifest_version: 2
+lifecycle:
+  data_schema_version: 1
+  data_migrations: []
+extension_id: flowsteward.centas
+kind: tool_provider
+version: 0.1.0
+release_stage: active
+billing_mode: free
+display_name: Centas
+description: 'Send documents from your workflows to Centas, the Lithuanian accounting
+  and business program, through its web exchange Centas WS (ws.centas.lt). Steps send
+  sales invoices, purchase invoices and customer orders with their lines, and bank
+  payments and product cards in batches. Centas WS keeps what it receives until an
+  accountant imports it in the Centas program.
+
+
+  Read steps return the product cards, stock by warehouse and payments that the Centas
+  program uploaded to Centas WS, and find a product by its code or barcode. Totals
+  are checked against the lines before anything is sent. Combine the steps to turn
+  shop orders into Centas invoices or orders, feed stock to a storefront or pass bank
+  payments on for booking. Each connection is one Centas WS project, reached with
+  its WS key.'
+vendor:
+  name: Flow Steward
+  support_url: https://github.com/Flow-Steward/ext-finance-centas/issues
+  website_url: https://github.com/Flow-Steward/ext-finance-centas
+listing:
+  category: finance
+  tags:
+  - centas
+  - accounting
+  - lithuania
+  - invoices
+  - orders
+  - payments
+  - inventory
+  summary: Send invoices, orders, payments and products to Centas and read its products,
+    stock and payments.
+  categories:
+  - finance
+  - inventory
+  - sales
+  setup_summary: "Turn on the Centas WS service for your Centas program, copy its\
+    \ WS key (Nustatymai \u2192 Bendrieji \u2192 III \u2192 WS raktas) into a project\
+    \ connection and run the connection test."
+features:
+- tool
+- action
+required_scopes:
+- extension:invoke
+machine_auth:
+  service_account_key: svc_ext_centas
+  required_scopes:
+  - extension:invoke
+account_scope:
+  scope_type: project
+  description: Each Centas WS project (its WS key) is a project connection. A project
+    may hold several, for example one per company.
+egress:
+  hosts:
+  - ws.centas.lt
+external_effects:
+- operation_id: send_sales_invoice
+  effect_kind: centas_send_sales_invoice
+  channel: centas_ws
+  idempotency: required
+  test_mode_behavior: suppress
+- operation_id: send_order
+  effect_kind: centas_send_order
+  channel: centas_ws
+  idempotency: required
+  test_mode_behavior: suppress
+- operation_id: send_purchase_invoice
+  effect_kind: centas_send_purchase_invoice
+  channel: centas_ws
+  idempotency: required
+  test_mode_behavior: suppress
+- operation_id: send_payments
+  effect_kind: centas_send_payments
+  channel: centas_ws
+  idempotency: required
+  test_mode_behavior: suppress
+- operation_id: send_products
+  effect_kind: centas_send_products
+  channel: centas_ws
+  idempotency: required
+  test_mode_behavior: suppress
+runtime:
+  contract_version: extension_host_v2
+  extension_contract_v2:
+    connection_types: contracts/connection_types.yaml
+    operation_manifest: contracts/operation_manifest.yaml
+    step_ui_manifest: contracts/step_ui_manifest.yaml
+    artifact_policies: contracts/artifact_policies.yaml
+entrypoint:
+  mode: subprocess
+  command:
+  - python3
+  - main.py
+  timeout_seconds: 600
+health:
+  command:
+  - python3
+  - health.py
+  timeout_seconds: 5
+ui_manifest: ui/ui_manifest.yaml
+action_manifest: ui/actions/actions.yaml
+python_requirements: []

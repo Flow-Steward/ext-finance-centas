@@ -1,0 +1,44 @@
+page_id: connection
+title: Connection
+description: Add and test the Centas WS project of a company.
+components:
+  - component_id: centas_connections
+    type: connection_form
+    title: Centas WS projects
+    description: Add one connection per Centas WS project, then test it. The key is stored encrypted and never shown again.
+    data:
+      connection_kind: extension
+      connection_type: centas
+      config_fields: [label]
+      secret_fields: [token]
+      test_action: test_connection
+    defaults:
+      label: ''
+    fields:
+      - path: label
+        widget: text
+        label: Label
+        placeholder: UAB X
+      - path: token
+        widget: secret
+        label: WS key
+        required: true
+        help: The WS raktas from Centas (Parametrai → Nustatymai → Bendrieji → III).
+    ui_schema:
+      actions:
+        test_label: Test connection
+  - component_id: connection_credentials
+    type: markdown
+    title: Where the key comes from
+    body: |
+      1. In Centas open **Parametrai → Nustatymai → Bendrieji → III** and copy **WS raktas** (see **Setup Guide**).
+      2. Paste it above and press **Test connection**.
+
+      The steps always connect to `https://ws.centas.lt`; there is no address to set.
+
+      **If the test fails:**
+
+      - **Authentication failed** — Centas WS does not accept the key: copy it again, or check that Centas WS is active.
+      - **Connection failed** — ws.centas.lt could not be reached from Flow Steward; try again later.
+
+      Test connection reads the start of the product export: it checks the key, not the right to send documents.
