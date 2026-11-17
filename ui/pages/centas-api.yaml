@@ -296,7 +296,7 @@ components:
 
     ### Send an invoice to another company's Centas
 
-    Sends your sales invoice to the receiving company's Centas WS as their purchase, with its lines and optionally its PDF. With Send e-mail on, Centas WS also e-mails the receiver. Centas WS does not check for repeats: sending the same invoice again can create it a second time.
+    Sends your sales invoice to the receiving company's Centas WS as their purchase, with its lines and optionally its PDF. With Send e-mail on, Centas WS also e-mails the receiver. The warnings say when Centas WS's row counts differ from the lines sent or are missing, and when an e-mail asked for is not reported as sent. Centas WS does not check for repeats: sending the same invoice again can create it a second time.
 
     Action id `send_invoice_to_company` · sends data to Centas WS · Centas WS: `POST /purchase/import`
 

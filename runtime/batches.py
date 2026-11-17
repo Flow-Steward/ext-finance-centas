@@ -862,13 +862,51 @@ def send_invoice_to_company(context: Context) -> dict[str, Any]:
     # The key travels inside the XML (siuntejas), as the specification shows.
     answer = context.transport.write("purchase/import", [("data", document)], token_field=False)
     email_sent = answer.get("email_sent")
+    counts = {key: _count(answer, key) for key in COMPANY_INVOICE_COUNTS}
+    lines = len(operation_input.get("lines") or [])
     return {
         **sent,
-        "purchase_rows_created": _count(answer, "purchase_rows_created"),
-        "document_rows_created": _count(answer, "document_rows_created"),
+        **counts,
         "email_sent": email_sent if isinstance(email_sent, bool) else None,
-        "warnings": [],
+        "warnings": _company_invoice_warnings(lines, counts, sent["email_requested"], email_sent),
     }
+
+
+#: The specification's counts of purchase/import: "Number of purchase rows created" (at
+#: the receiver) and "Number of document rows created" (the sender's sales document).
+COMPANY_INVOICE_COUNTS = {
+    "purchase_rows_created": "purchase rows (the receiver's purchase)",
+    "document_rows_created": "document rows (your sales document)",
+}
+
+
+def _company_invoice_warnings(
+    lines: int, counts: Mapping[str, int | None], email_requested: Any, email_sent: Any
+) -> list[str]:
+    """What the answer does not confirm. The specification does not say that a count
+    equals the lines sent, so a difference is said as not confirmed, not as an error;
+    the document is never sent again by this step."""
+    warnings = []
+    for key, what in COMPANY_INVOICE_COUNTS.items():
+        count = counts.get(key)
+        if count is None:
+            warnings.append(
+                f"Centas WS did not report {key}: that {what} were created for the {lines} "
+                "lines sent is not confirmed; check the document in Centas"
+            )
+        elif count != lines:
+            warnings.append(
+                f"Centas WS reports {count} {what} created for {lines} lines sent: that every "
+                "line arrived is not confirmed; check the document in Centas before sending "
+                "it again"
+            )
+    if email_requested is True and email_sent is not True:
+        said = "false" if email_sent is False else "nothing about it"
+        warnings.append(
+            f"An e-mail to the receiver was asked for, but Centas WS reports {said} for "
+            "email_sent: the receiver may not have been notified"
+        )
+    return warnings
 
 
 __all__ = [

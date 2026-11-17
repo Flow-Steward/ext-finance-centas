@@ -1083,7 +1083,9 @@ def _order_and_purchase_steps() -> list[dict[str, Any]]:
             "POST /purchase/import",
             "Sends your sales invoice to the receiving company's Centas WS as their purchase, "
             "with its lines and optionally its PDF. With Send e-mail on, Centas WS also "
-            "e-mails the receiver. " + REPEATS.format(noun="invoice"),
+            "e-mails the receiver. The warnings say when Centas WS's row counts differ from "
+            "the lines sent or are missing, and when an e-mail asked for is not reported as "
+            "sent. " + REPEATS.format(noun="invoice"),
             [
                 text(
                     "receiver_company_code",
