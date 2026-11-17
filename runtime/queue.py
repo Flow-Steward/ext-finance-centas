@@ -61,20 +61,26 @@ def neutral() -> dict[str, Any]:
 def take(context: Context, operation_id: str) -> dict[str, Any]:
     path = path_of(operation_id, context.operation_input)
     raw = context.transport.take(path)
-    scrubbed = context.transport.scrub_bytes(raw)
     handle: str | None = None
     save_failure = ""
     try:
-        handle = files.save(
-            context,
-            scrubbed,
-            binding_key=files.QUEUE_BINDING,
-            content_type=files.QUEUE_CONTENT_TYPE,
-            what="The records taken from Centas WS",
-        )
-    except errors.ExtensionError as exc:
-        # The records are taken: they are still returned below if they can be.
-        save_failure = exc.message
+        scrubbed = context.transport.scrub_bytes(raw)
+    except ValueError:
+        # Never saved with the key in it; the records are taken, so they are still
+        # returned below (read from the answer, every value scrubbed) if they can be.
+        save_failure = "The answer could not be cleaned of the key, so it was not saved"
+    else:
+        try:
+            handle = files.save(
+                context,
+                scrubbed,
+                binding_key=files.QUEUE_BINDING,
+                content_type=files.QUEUE_CONTENT_TYPE,
+                what="The records taken from Centas WS",
+            )
+        except errors.ExtensionError as exc:
+            # The records are taken: they are still returned below if they can be.
+            save_failure = exc.message
     warnings: list[str] = []
     read_failure = ""
     try:

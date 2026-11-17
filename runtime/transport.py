@@ -30,6 +30,7 @@ from __future__ import annotations
 
 import http.client
 import json
+import html
 import re
 import secrets
 import threading
@@ -357,9 +358,19 @@ class CentasTransport:
         return value
 
     def scrub_bytes(self, raw: bytes) -> bytes:
-        """The key removed from a raw text answer (kept as UTF-8)."""
+        """The key removed from a raw text answer (kept as UTF-8).
+
+        Also where it is written with XML or HTML character references (``&#65;``,
+        ``&#x41;``, ``&amp;``…), whole or in part: the text is read the way an XML reader
+        would, and every place that reads as the key is replaced in the raw text. The
+        result is checked the same way; a key still found is an error, never a file.
+        """
         text = raw.decode("utf-8", "replace")
-        return str(self.scrub(text)).encode("utf-8")
+        forms = self._connection.secret_forms()
+        cleaned = redact_references(str(self.scrub(text)), forms)
+        if any(form in _decode_references(cleaned)[0] for form in forms):
+            raise ValueError("the key is still in the answer")
+        return cleaned.encode("utf-8")
 
     def _detail(self, raw: bytes) -> str:
         """Centas WS's own error text, or the text of an error page; never the key."""
@@ -511,6 +522,58 @@ def check_ws(path: str) -> str:
             "before running the step again"
         )
     return "; check in Centas WS whether it arrived before running the step again"
+
+
+_REFERENCE = re.compile(r"&(?:#[0-9]{1,8}|#[xX][0-9a-fA-F]{1,7}|[A-Za-z][A-Za-z0-9]{1,31});")
+
+
+def _decode_references(text: str) -> tuple[str, list[int], list[int]]:
+    """``text`` with its character references read, and for every character read the
+    start and end of the raw text it came from."""
+    out: list[str] = []
+    starts: list[int] = []
+    ends: list[int] = []
+    index = 0
+    while index < len(text):
+        match = _REFERENCE.match(text, index) if text[index] == "&" else None
+        decoded = html.unescape(match.group(0)) if match else ""
+        if match and decoded != match.group(0):
+            for char in decoded:
+                out.append(char)
+                starts.append(index)
+                ends.append(match.end())
+            index = match.end()
+            continue
+        out.append(text[index])
+        starts.append(index)
+        ends.append(index + 1)
+        index += 1
+    return "".join(out), starts, ends
+
+
+def redact_references(text: str, forms: tuple[str, ...]) -> str:
+    """Every place of ``text`` that reads as one of ``forms`` once character references
+    are read, replaced by ``[redacted]`` in the raw text."""
+    if "&" not in text:
+        return text
+    decoded, starts, ends = _decode_references(text)
+    spans: list[tuple[int, int]] = []
+    for form in forms:
+        at = decoded.find(form)
+        while at != -1:
+            spans.append((starts[at], ends[at + len(form) - 1]))
+            at = decoded.find(form, at + len(form))
+    if not spans:
+        return text
+    merged: list[list[int]] = []
+    for start, end in sorted(spans):
+        if merged and start <= merged[-1][1]:
+            merged[-1][1] = max(merged[-1][1], end)
+        else:
+            merged.append([start, end])
+    for start, end in reversed(merged):
+        text = text[:start] + "[redacted]" + text[end:]
+    return text
 
 
 def unknown(message: str, code: str, status: int | None) -> ExtensionError:
