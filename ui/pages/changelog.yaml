@@ -8,6 +8,12 @@ components:
   type: markdown
   title: Release history
   body: |
+    ## 0.1.1 — 2026-11-17
+
+    - The take steps remove the key from the saved queue file also where Centas WS writes it with XML character references (`&#65;`, `&#x41;`). An answer that cannot be cleaned is not saved; its records are returned in the step output with a warning, as when the file cannot be saved.
+    - Send an invoice to another company's Centas warns when the purchase or document row counts differ from the lines sent or are missing, and when an e-mail was asked for but is not reported as sent. The invoice is never sent again by the step.
+    - A response too large for the step output keeps the write's facts and the result's short values.
+
     ## 0.1.0 — 2026-11-16
 
     - First release: steps for Centas WS (ws.centas.lt), the web exchange of the Centas
