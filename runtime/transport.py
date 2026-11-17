@@ -524,7 +524,7 @@ def check_ws(path: str) -> str:
     return "; check in Centas WS whether it arrived before running the step again"
 
 
-_REFERENCE = re.compile(r"&(?:#[0-9]{1,8}|#[xX][0-9a-fA-F]{1,7}|[A-Za-z][A-Za-z0-9]{1,31});")
+_REFERENCE = re.compile(r"&(?:#[0-9]+|#[xX][0-9a-fA-F]+|[A-Za-z][A-Za-z0-9]{1,31});")
 
 
 def _decode_references(text: str) -> tuple[str, list[int], list[int]]:

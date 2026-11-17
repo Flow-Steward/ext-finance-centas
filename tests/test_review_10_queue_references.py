@@ -80,3 +80,22 @@ def test_10_records_are_returned_when_the_answer_cannot_be_cleaned(
     assert response["result"]["file"] is None
     assert any("not in a file" in w for w in response["result"]["warnings"])
     assert TOKEN not in dumped(response)
+
+
+def _padded_decimal(text: str) -> str:
+    return "".join(f"&#{ord(c):012d};" for c in text)
+
+
+def _padded_hex(text: str) -> str:
+    return "".join(f"&#x{ord(c):010X};" for c in text)
+
+
+@pytest.mark.parametrize("encode", [_padded_decimal, _padded_hex], ids=["decimal", "hex"])
+def test_10_a_key_in_references_with_long_leading_zeros_is_not_saved(encode: Any) -> None:
+    files = Files()
+    answer = xml(PAYMENT, tag="Payment", token=encode(TOKEN))
+    response = run(FakeCentas(payments__export=answer), "take_new_payments", files=files)
+    assert response["ok"] is True, response
+    assert files.written, response["result"]["warnings"]
+    assert _leaks(files.written[0]["data"]) == []
+    assert TOKEN not in dumped(response)
